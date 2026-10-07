@@ -93,7 +93,7 @@ let pdfReady;
 function loadScript(src) {return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('No se pudo cargar el generador de PDF.'));document.head.appendChild(s);});}
 function base64(buffer){let s='';const bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);}
 async function dataUrl(path,type){return 'data:'+type+';base64,'+base64(await asset(path));}
-async function preparePdf(){
+export async function preparePdf(){
   if(!pdfReady)pdfReady=(async()=>{
     const [,regular,bold,cover,letterhead,bank,defaults]=await Promise.all([loadScript('vendor/pdfmake.min.js'),asset('assets/Carlito-Regular.ttf'),asset('assets/Carlito-Bold.ttf'),dataUrl('assets/cover.png','image/png'),dataUrl('assets/letterhead.png','image/png'),dataUrl('assets/bank.jpg','image/jpeg'),getDefaults()]);
     pdfMake.addVirtualFileSystem({'Carlito-Regular.ttf':base64(regular),'Carlito-Bold.ttf':base64(bold)});

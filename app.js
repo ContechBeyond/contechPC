@@ -1,6 +1,7 @@
 import {COLUMN_FIELDS,headerColumns,identifyHeaders,rankSheets,normalize,importMatrix,validateRows,money,cents,multipliedCents,editableMoney,todayMexico,lastDayOfMonth,coverDate,sheetReference} from './core.js';
 import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js';
-import {showPdf,clearPreview} from './preview.js';
+import {openPdfPreview,clearPreview} from './preview.js';
+import {initFinalVersion} from './vf-ui.js';
 const $=id=>document.getElementById(id);
 const ICONS={upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',sheet:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h8M11 11v7"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8a7 7 0 0 1 11.8-3L20 8M4 16l2.6 3A7 7 0 0 0 18.4 16"/>',check:'<path d="m5 12 4 4L19 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',file:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/>',shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Zm-4 9 3 3 5-6"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>'};
 const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.info}</svg>`;
@@ -90,7 +91,7 @@ for(const event of ['dragleave','drop'])$('dropzone').addEventListener(event,e=>
 $('dropzone').addEventListener('drop',e=>{const file=e.dataTransfer.files[0];if(file)readFile(file);});
 function tab(name){for(const type of ['file','sheets']){$(type+'-tab').classList.toggle('active',type===name);$(type+'-tab').setAttribute('aria-selected',String(type===name));$(type+'-pane').hidden=type!==name;}}
 $('file-tab').addEventListener('click',()=>tab('file'));$('sheets-tab').addEventListener('click',()=>tab('sheets'));
-document.querySelectorAll('[role="tab"]').forEach(button=>button.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const target=button.id==='file-tab'?'sheets':'file';tab(target);$(target+'-tab').focus();}}));
+document.querySelectorAll('#file-tab,#sheets-tab').forEach(button=>button.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const target=button.id==='file-tab'?'sheets':'file';tab(target);$(target+'-tab').focus();}}));
 async function googleApi(path){const response=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+path,{headers:{Authorization:'Bearer '+state.googleToken}});if(!response.ok){if(response.status===401)state.googleToken=null;throw new Error(response.status===403?'La cuenta conectada no tiene acceso a esta hoja.':response.status===401?'La sesión de Google venció. Conecta tu cuenta otra vez.':'No se pudo leer la hoja de Google Sheets.');}return response.json();}
 async function googleSheetMatrix(ref,name){const range=encodeURIComponent("'"+name.replace(/'/g,"''")+"'");const response=await googleApi(ref.id+'/values/'+range+'?valueRenderOption=UNFORMATTED_VALUE');return response.values||[];}
 async function importGoogleSheet(ref,name){processMatrix(await googleSheetMatrix(ref,name),state.googleMetadata.title+' · '+name);}
@@ -134,11 +135,12 @@ async function exportDocument(type,preview=false){
   const data=currentData();state.busy=true;update(false);notice('');
   try{
     const blob=type==='word'?await buildWordBlob(data):await buildPdfBlob(data);
-    if(preview){$('preview-dialog-name').textContent=data.project+' · '+data.client+' · Folio '+data.folio;$('preview-dialog').showModal();state.pdf={blob,data};await showPdf(blob);}
+    if(preview){state.pdf={blob,data};await openPdfPreview(blob,data.project+' · '+data.client+' · Folio '+data.folio,downloadName(data,'pdf'));}
     else downloadBlob(blob,downloadName(data,type==='word'?'docx':'pdf'));
   }catch(error){console.error(error);notice('No se pudo generar el documento. '+(error.message||'Revisa los datos e inténtalo de nuevo.'),true);}finally{state.busy=false;update(false);}
 }
 $('download-word').addEventListener('click',()=>exportDocument('word'));$('download-pdf').addEventListener('click',()=>exportDocument('pdf'));$('preview').addEventListener('click',()=>exportDocument('pdf',true));
-$('close-preview').addEventListener('click',()=>$('preview-dialog').close());$('preview-dialog').addEventListener('close',()=>{clearPreview().catch(()=>{});});$('preview-download').addEventListener('click',()=>{if(state.pdf)downloadBlob(state.pdf.blob,downloadName(state.pdf.data,'pdf'));else exportDocument('pdf');});
+$('close-preview').addEventListener('click',()=>$('preview-dialog').close());$('preview-dialog').addEventListener('close',()=>{clearPreview().catch(()=>{});});
+initFinalVersion(()=>state.googleToken);
 resetDates();update();
 try{state.defaults=await getDefaults();$('technical').value=state.defaults.technical;$('commercial').value=state.defaults.commercial;update();}catch(error){notice('No se pudieron cargar las condiciones habituales. Recarga la página.',true);}

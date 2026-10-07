@@ -22,6 +22,11 @@
     </div>
   </header>
   <main class="workspace">
+    <nav class="workspace-tabs" role="tablist" aria-label="Herramientas de Contech">
+      <button id="proposal-section-tab" class="workspace-tab active" role="tab" aria-selected="true" aria-controls="proposal-view" type="button">Propuesta comercial</button>
+      <button id="vf-section-tab" class="workspace-tab" role="tab" aria-selected="false" aria-controls="vf-view" tabindex="-1" type="button">Versión final <span>VM → VF</span></button>
+    </nav>
+    <div id="proposal-view" role="tabpanel" aria-labelledby="proposal-section-tab">
     <div class="page-heading"><div><span class="eyebrow">CONTECH SECURE SOLUTIONS</span><h1>Nueva propuesta</h1><p>Importa tus conceptos y completa los datos del proyecto.</p></div><button id="reset" class="button button-quiet" type="button"><span data-icon="refresh"></span>Empezar de nuevo</button></div>
     <div id="notice" class="notice" role="status" hidden></div>
     <div class="workbench">
@@ -81,10 +86,47 @@
         </div>
       </aside>
     </div>
-    <footer class="footer"><span>Contech Secure Solutions</span><span>Generador de propuestas comerciales</span></footer>
+    </div>
+    <section id="vf-view" role="tabpanel" aria-labelledby="vf-section-tab" hidden>
+      <div class="page-heading"><div><span class="eyebrow">VERSIÓN FINAL</span><h1>De matriz a versión final</h1><p>Prepara el Excel y el PDF de tu proyecto en un solo paso.</p></div></div>
+      <div class="vf-workbench">
+        <section class="panel" aria-labelledby="vf-import-title">
+          <div class="section-heading"><span class="step-number">01</span><div><h2 id="vf-import-title">Carga la versión matriz</h2><p>El nombre debe incluir «VM». Conservaremos el resto del nombre y el folio.</p></div></div>
+          <div class="tabs" role="tablist" aria-label="Origen de la versión matriz">
+            <button id="vf-file-tab" class="tab active" role="tab" aria-selected="true" aria-controls="vf-file-pane" type="button"><span data-icon="upload"></span>Archivo Excel</button>
+            <button id="vf-sheets-tab" class="tab" role="tab" aria-selected="false" aria-controls="vf-sheets-pane" tabindex="-1" type="button"><span data-icon="sheet"></span>Google Sheets</button>
+          </div>
+          <div id="vf-file-pane" role="tabpanel" aria-labelledby="vf-file-tab">
+            <label id="vf-dropzone" class="dropzone" for="vf-file"><span class="upload-symbol" data-icon="upload"></span><strong>Selecciona o arrastra la VM</strong><span>Excel (.xlsx) · hasta 10 MB</span><span class="file-action">Elegir archivo</span><input type="file" id="vf-file" accept=".xlsx" class="sr-only"></label>
+          </div>
+          <div id="vf-sheets-pane" role="tabpanel" aria-labelledby="vf-sheets-tab" hidden>
+            <label class="field"><span>Enlace de Google Sheets</span><input id="vf-sheet-url" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+            <div class="sheets-actions"><button id="vf-import-sheets" class="button button-primary" type="button">Preparar versión final</button><button id="vf-connect-google" class="button button-quiet" type="button">Conectar Google</button></div>
+            <p class="help">Usa el enlace del libro completo. Para una hoja privada, conecta Google o descarga y carga el Excel.</p>
+          </div>
+          <div id="vf-error" class="import-error" role="alert" hidden></div>
+          <div id="vf-progress" class="vf-progress" role="status" aria-live="polite" hidden></div>
+          <p class="privacy-note"><span data-icon="shield"></span>La fuente VM permanece intacta. La conversión se realiza en tu navegador.</p>
+        </section>
+        <aside class="panel vf-result" aria-labelledby="vf-result-title">
+          <div class="summary-heading"><h2 id="vf-result-title">Tu versión final</h2><span class="paper-size">Carta horizontal</span></div>
+          <div id="vf-empty" class="vf-empty"><span class="upload-symbol" data-icon="file"></span><p>Carga una VM para preparar tus archivos.</p></div>
+          <div id="vf-result-data" hidden>
+            <p class="eyebrow">NOMBRE FINAL</p><h3 id="vf-final-name" class="vf-book-name"></h3>
+            <ol id="vf-sheet-list" class="vf-sheet-list"></ol>
+            <div class="vf-verification"><span data-icon="check"></span><div><strong>Valores y totales conservados</strong><p id="vf-validation-summary"></p></div></div>
+            <details id="vf-details"><summary>Detalles de la conversión</summary><p id="vf-conversion-details"></p></details>
+            <button id="vf-preview" class="button button-secondary full-width" type="button" disabled><span data-icon="eye"></span>Vista previa del PDF</button>
+            <div class="download-grid"><button id="vf-download-excel" class="button button-primary" type="button" disabled><span data-icon="sheet"></span>Excel VF</button><button id="vf-download-pdf" class="button button-primary" type="button" disabled><span data-icon="download"></span>PDF VF</button></div>
+          </div>
+          <p class="help">Se conservarán, en este orden: Resumen Costos (o Resumen), Matriz y Mano de Obra.</p>
+        </aside>
+      </div>
+    </section>
+    <footer class="footer"><span>Contech Secure Solutions</span><span>Propuestas y versiones finales</span></footer>
   </main>
   <dialog id="mapping-dialog" class="mapping-dialog"><form method="dialog"><div class="dialog-heading"><h2>Identifica las columnas</h2><button class="icon-button" value="cancel" aria-label="Cerrar" type="submit"><span data-icon="close"></span></button></div><p id="mapping-help">Relaciona las columnas del archivo con los datos de la propuesta.</p><div class="fields-grid"><label id="mapping-table-label" class="field" hidden><span>Tabla detectada</span><select id="mapping-table"></select></label><label class="field"><span>Fila de encabezados</span><input id="mapping-header" type="number" min="1" step="1"></label></div><div id="mapping-fields" class="fields-grid"></div><p id="mapping-error" class="import-error" role="alert" hidden></p><div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancelar</button><button id="apply-mapping" class="button button-primary" type="button">Importar conceptos</button></div></form></dialog>
-  <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><div><h2>Vista previa</h2><p id="preview-dialog-name"></p></div><button id="close-preview" class="icon-button" type="button" aria-label="Cerrar vista previa"><span data-icon="close"></span></button></div><div class="preview-toolbar"><button id="preview-previous" class="button button-quiet button-small" type="button" disabled>Anterior</button><span id="preview-page" aria-live="polite"></span><button id="preview-next" class="button button-quiet button-small" type="button" disabled>Siguiente</button><button id="preview-zoom" class="button button-quiet button-small" type="button">Ampliar</button></div><div id="pdf-preview" aria-label="Vista previa de la propuesta comercial"><p id="preview-message" role="status">Cargando vista previa…</p><canvas id="preview-canvas" aria-label="Página de la propuesta" hidden></canvas></div><div class="dialog-actions"><button id="preview-download" class="button button-primary" type="button"><span data-icon="download"></span>Descargar PDF</button></div></dialog>
+  <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><div><h2>Vista previa</h2><p id="preview-dialog-name"></p></div><button id="close-preview" class="icon-button" type="button" aria-label="Cerrar vista previa"><span data-icon="close"></span></button></div><div class="preview-toolbar"><button id="preview-previous" class="button button-quiet button-small" type="button" disabled>Anterior</button><span id="preview-page" aria-live="polite"></span><button id="preview-next" class="button button-quiet button-small" type="button" disabled>Siguiente</button><button id="preview-zoom" class="button button-quiet button-small" type="button">Ampliar</button></div><div id="pdf-preview" aria-label="Vista previa del documento"><p id="preview-message" role="status">Cargando vista previa…</p><canvas id="preview-canvas" aria-label="Página del documento" hidden></canvas></div><div class="dialog-actions"><button id="preview-download" class="button button-primary" type="button"><span data-icon="download"></span>Descargar PDF</button></div></dialog>
   <script>if(location.protocol==='file:')document.getElementById('notice').outerHTML='<div class="notice" role="alert">Para usar la app, ábrela desde el enlace de alojamiento o el servidor local indicado en la guía.</div>';</script>
 </body>
 </html>

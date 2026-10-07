@@ -1,4 +1,5 @@
-let library,documentTask,pdfDocument,renderTask,generation=0,pageNumber=1,expanded=false;
+import {downloadBlob} from './exporters.js';
+let library,documentTask,pdfDocument,renderTask,currentDownload,generation=0,pageNumber=1,expanded=false;
 const $=id=>document.getElementById(id);
 async function pdfLibrary(){
   if(!library)library=import('./vendor/pdf.module.js').then(module=>{module.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdf.worker.module.js',import.meta.url).href;return module;}).catch(error=>{library=null;throw error;});
@@ -31,11 +32,17 @@ export async function showPdf(blob){
   }catch(error){if(version!==generation)return;$('preview-message').textContent='No se pudo mostrar la vista previa. Puedes descargar el PDF para revisarlo.';$('preview-message').hidden=false;throw error;}
 }
 export async function clearPreview(){
+  currentDownload=null;
   generation++;if(renderTask){renderTask.cancel();renderTask=null;}
   const task=documentTask;documentTask=null;pdfDocument=null;pageNumber=1;
   $('preview-canvas').hidden=true;$('preview-page').textContent='';$('preview-previous').disabled=true;$('preview-next').disabled=true;
   if(task)await task.destroy();
 }
+export async function openPdfPreview(blob,title,name){
+  $('preview-dialog-name').textContent=title;$('preview-dialog').showModal();
+  try{await showPdf(blob);}finally{currentDownload={blob,name};}
+}
+$('preview-download').addEventListener('click',()=>{if(currentDownload)downloadBlob(currentDownload.blob,currentDownload.name);});
 for(const [id,step] of [['preview-previous',-1],['preview-next',1]])$(id).addEventListener('click',async()=>{
   if(!pdfDocument)return;pageNumber=Math.max(1,Math.min(pdfDocument.numPages,pageNumber+step));
   try{await renderPage();}catch{ $('preview-message').textContent='No se pudo mostrar esta página.';$('preview-message').hidden=false; }

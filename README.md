@@ -13,6 +13,24 @@ Aplicación responsiva para importar conceptos, revisar importes y generar propu
 
 Los datos de cada propuesta se mantienen únicamente durante la sesión de la página. Al recargarla se pierden. No hay historial ni base de datos. Los archivos y documentos se procesan en el navegador; solo la lectura de Google Sheets requiere comunicarse con Google.
 
+## Versión final (VM → VF)
+
+La pestaña **Versión final** recibe un archivo `.xlsx` o un enlace normal del libro completo de Google Sheets. Al cargarlo, prepara automáticamente el Excel VF y un único PDF con vista previa. No modifica la fuente ni guarda un historial.
+
+- Para un archivo, usa su nombre sin `.xlsx`. Para Sheets, obtiene el título original del libro desde la descarga de Google. Sustituye únicamente la palabra `VM` por `VF`, conservando los demás caracteres y números. Un sufijo del archivo como `(4)` también se conserva.
+- Conserva `Resumen Costos` (o `Resumen`), `Matriz` y `Mano de Obra`, en ese orden y con sus nombres originales. Retira las demás hojas de la copia final.
+- Revisa las referencias de fórmulas, fórmulas compartidas y nombres definidos antes de retirar hojas. Las celdas que necesitan datos de una hoja retirada conservan el resultado original en la misma posición. Las demás fórmulas permanecen activas. No añade filas, hojas auxiliares ni información a las tablas.
+- Modifica directamente las partes necesarias del paquete XLSX; conserva los estilos, fuentes, bordes, combinaciones, dimensiones y valores originales. No usa la exportación de SheetJS para reconstruir el formato ni redondea los valores internos. Verifica todos los valores de las hojas conservadas antes de habilitar las descargas.
+- Imprime el contenido de cada hoja en Carta horizontal, con una página de ancho y las páginas de alto necesarias. Las filas y combinaciones se mantienen completas. Cada hoja comienza en una nueva página. El encabezado muestra el nombre VF a la izquierda y el nombre de la hoja a la derecha; el pie indica `x de x` sobre el PDF completo. Los encabezados y pies se dibujan con Arial de 10 puntos y quedan separados de las tablas.
+
+El PDF VF reproduce las tablas mediante imágenes de alta resolución (216 ppp). El texto de ese PDF no es seleccionable; el Excel sigue siendo editable. Se conserva el formato numérico de impresión de los ejemplos de Contech, con punto de miles y coma decimal. Esta presentación no cambia los números guardados en el Excel.
+
+Las fórmulas deben tener resultados guardados: si falta uno, la app indica la celda y pide abrir y guardar la VM en Excel o Sheets. También indica los errores existentes o las dependencias que no puede retirar con seguridad, en lugar de generar una VF con referencias rotas. La impresión admite tablas e imágenes; los gráficos, objetos, texto girado y reglas dependientes de hojas retiradas requieren preparación en Excel. Los libros con otros formatos avanzados de impresión deben revisarse en la vista previa.
+
+La carga de Excel y los enlaces públicos funcionan sin credenciales. La conexión a libros privados requiere el cliente OAuth descrito más abajo y acceso al documento; debe validarse con la cuenta de la empresa cuando se configure. No se admiten enlaces de una sola pestaña publicada como CSV, porque no incluyen todas las hojas ni su formato.
+
+Se verificó la VM de Videoportero proporcionada: 178 celdas conservadas, 81 fórmulas activas, dos celdas dependientes de Misceláneos conservadas como valores y tres páginas de PDF. Excel recalculó los totales originales `20192.17248` y `4875` sin errores; cambiar Mano de Obra actualizó Matriz. Una prueba con 62 filas de mano de obra generó nueve páginas con numeración global y el total completo en la última página. Las pruebas y los datos de los clientes permanecen fuera del repositorio.
+
 La detección busca en las filas disponibles, sin una fila inicial ni un orden de columnas fijos. Reconoce encabezados equivalentes como «Concepto», «Artículo», «Cant.», «Cantidad», «Precio unitario», «P.U.» e «Importe», ignorando acentos, puntuación y etiquetas de moneda. Comprueba que debajo haya conceptos con datos de cantidad, precio o importe; ignora títulos, notas y encabezados repetidos, y termina al llegar al total o a otra tabla con columnas diferentes.
 
 Si encuentra varias tablas, solicita elegir la tabla. Si no reconoce los nombres o hay columnas ambiguas, permite indicar la fila de encabezados y relacionar las columnas manualmente. No usa el color como criterio y no requiere que exista «Unidad». Los enlaces publicados como CSV contienen solo la pestaña publicada, por lo que esa importación busca dentro de esa pestaña.

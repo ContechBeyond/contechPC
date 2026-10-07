@@ -58,6 +58,20 @@ export async function buildWordBlob(data) {
   replaceConditions(body,'CONSIDERACIONES TÉCNICAS','CONSIDERACIONES COMERCIALES',data.technical);
   replaceConditions(body,'CONSIDERACIONES COMERCIALES','CONDICIONES DE PAGO',data.commercial);
   const table=children(body,'tbl')[0],rows=children(table,'tr');
+  const headerCells=children(rows[0],'tc'),headerTotal=headerCells.at(-1);
+  const headerShade=child(child(headerCells[0],'tcPr'),'shd').cloneNode(true);
+  const headerColor=headerCells[0].getElementsByTagNameNS(W,'color')[0];
+  const totalCellProps=ensureChild(headerTotal,'tcPr'),oldShade=child(totalCellProps,'shd');
+  if(oldShade)totalCellProps.replaceChild(headerShade,oldShade);else totalCellProps.appendChild(headerShade);
+  const headerProperties=[
+    ...children(headerTotal,'p').map(p=>ensureChild(ensureChild(p,'pPr'),'rPr')),
+    ...Array.from(headerTotal.getElementsByTagNameNS(W,'r')).map(run=>ensureChild(run,'rPr'))
+  ];
+  for(const props of headerProperties){
+    const oldColor=child(props,'color'),color=headerColor.cloneNode(true);
+    if(oldColor)props.replaceChild(color,oldColor);else props.appendChild(color);
+    setAttr(ensureChild(props,'b'),'val','1');setAttr(ensureChild(props,'bCs'),'val','1');
+  }
   const pattern=rows[1].cloneNode(true),total=rows.at(-1);
   const widths=[340,1650,3638,920,1100,1190];
   const grid=child(table,'tblGrid');children(grid,'gridCol').forEach((col,i)=>setAttr(col,'w',widths[i]));
@@ -97,7 +111,7 @@ function lineCount(text,width,bold=false,size=11) {
 export async function buildPdfBlob(data) {
   const assets=await preparePdf();
   const widths=[12,78,177.4,41.5,50.5,55],fontSize=11,lineHeight=14.41;
-  const header=['#','Concepto','Descripción','Cantidad','P. Unitario','Total'].map((text,i)=>({text,bold:i!==5,color:i===5?'#000000':'#ffffff',fillColor:i===5?'#D9EAD3':'#434343',alignment:'center',margin:[0,1,0,1]}));
+  const header=['#','Concepto','Descripción','Cantidad','P. Unitario','Total'].map(text=>({text,bold:true,color:'#ffffff',fillColor:'#434343',alignment:'center',margin:[0,1,0,1]}));
   const body=[header];
   for(let index=0;index<data.rows.length;index++){
     const row=data.rows[index];const values=[String(index+1),row.concept,row.description,decimalString(row.quantity,'quantity').replace('.',','),money(row.unitCents),money(row.amountCents)];

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#bf1b23">
+  <meta name="description" content="Genera propuestas comerciales Contech a partir de tus conceptos, con validación de importes y descarga de Word y PDF.">
+  <title>Propuestas comerciales · Contech</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="vendor/xlsx.full.min.js" defer></script>
+  <script src="vendor/jszip.min.js" defer></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="./" aria-label="Contech, inicio"><img src="assets/logo.jpeg" alt="Contech" width="800" height="234"></a>
+      <div class="header-divider"></div><span class="header-name">Propuestas comerciales</span>
+      <span class="header-tag">Plantilla Contech</span>
+    </div>
+  </header>
+  <main class="workspace">
+    <div class="page-heading"><div><span class="eyebrow">CONTECH SECURE SOLUTIONS</span><h1>Nueva propuesta</h1><p>Importa tus conceptos y completa los datos del proyecto.</p></div><button id="reset" class="button button-quiet" type="button"><span data-icon="refresh"></span>Empezar de nuevo</button></div>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <div class="workbench">
+      <div class="editor">
+        <section class="panel" aria-labelledby="import-title">
+          <div class="section-heading"><span class="step-number">01</span><div><h2 id="import-title">Importa los conceptos</h2><p>Desde un archivo o una hoja de Google Sheets.</p></div></div>
+          <div class="tabs" role="tablist" aria-label="Origen de los conceptos">
+            <button id="file-tab" class="tab active" role="tab" aria-selected="true" aria-controls="file-pane" type="button"><span data-icon="upload"></span>Archivo</button>
+            <button id="sheets-tab" class="tab" role="tab" aria-selected="false" aria-controls="sheets-pane" type="button"><span data-icon="sheet"></span>Google Sheets</button>
+          </div>
+          <div id="file-pane" role="tabpanel" aria-labelledby="file-tab">
+            <label id="dropzone" class="dropzone" for="file"><span class="upload-symbol" data-icon="upload"></span><strong>Selecciona o arrastra tu archivo</strong><span>Excel, CSV u ODS · hasta 10 MB</span><span class="file-action">Elegir archivo</span><input type="file" id="file" accept=".xlsx,.xls,.csv,.ods" class="sr-only"></label>
+          </div>
+          <div id="sheets-pane" role="tabpanel" aria-labelledby="sheets-tab" hidden>
+            <label class="field"><span>Enlace de Google Sheets</span><input id="sheet-url" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+            <div class="sheets-actions"><button id="import-sheets" class="button button-secondary" type="button"><span data-icon="sheet"></span>Importar hoja</button><button id="connect-google" class="button button-quiet" type="button">Conectar Google</button></div>
+            <p id="google-help" class="help">Importa una hoja pública por enlace. Para hojas privadas, conecta tu cuenta de Google o carga el archivo Excel.</p>
+          </div>
+          <p class="help">Buscamos la tabla en «Cliente» y reconocemos sus columnas aunque cambien de lugar.</p>
+          <div class="source-info" id="source-info" hidden><span data-icon="check"></span><span id="source-name"></span><label id="worksheet-label" hidden>Hoja<select id="worksheet"></select></label></div>
+          <div class="import-error" id="import-error" role="alert" hidden></div>
+          <div class="table-section" id="table-section" hidden>
+            <div class="table-toolbar"><h3>Conceptos <span id="row-count" class="count">0</span></h3><button id="add-row" class="button button-quiet button-small" type="button"><span data-icon="plus"></span>Añadir concepto</button></div>
+            <div class="table-scroll"><table class="concept-table"><caption class="sr-only">Conceptos de la propuesta, editables</caption><thead><tr><th>#</th><th>Concepto y descripción</th><th>Cantidad</th><th>P. unitario</th><th>Importe</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody id="rows"></tbody></table></div>
+            <div id="validation" class="validation" aria-live="polite"></div>
+          </div>
+          <button id="manual-start" class="text-button" type="button">O captura los conceptos manualmente</button>
+        </section>
+        <section class="panel" aria-labelledby="project-title">
+          <div class="section-heading"><span class="step-number">02</span><div><h2 id="project-title">Datos del proyecto</h2><p>Así aparecerán en la portada de tu propuesta.</p></div></div>
+          <div class="fields-grid">
+            <label class="field"><span>Proyecto <span class="required">*</span></span><input id="project" maxlength="90" placeholder="Ej. Videoportero" required autocomplete="off"></label>
+            <label class="field"><span>Cliente <span class="required">*</span></span><input id="client" maxlength="120" placeholder="Ej. Tabachines" required autocomplete="off"></label>
+            <label class="field"><span>Folio <span class="required">*</span></span><input id="folio" maxlength="40" placeholder="Ej. 163906102026" required autocomplete="off"></label>
+            <label class="field"><span>Dirigida a</span><input id="recipient" maxlength="160" value="Estimado cliente" autocomplete="off"></label>
+            <label class="field"><span>Fecha de emisión <span class="required">*</span></span><input id="issue-date" type="date" required></label>
+            <label class="field"><span>Vigencia hasta <span class="required">*</span></span><input id="expiry-date" type="date" required></label>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="conditions-title">
+          <div class="section-heading"><span class="step-number">03</span><div><h2 id="conditions-title">Condiciones de la propuesta</h2><p>Conserva las habituales o ajústalas para este proyecto.</p></div></div>
+          <label class="field"><span>Consideraciones técnicas <span class="required">*</span></span><textarea id="technical" rows="7" required></textarea><small>Escribe cada consideración en una línea.</small></label>
+          <label class="field"><span>Consideraciones comerciales <span class="required">*</span></span><textarea id="commercial" rows="5" required></textarea></label>
+          <div class="conditions-footer"><button id="restore-conditions" class="text-button" type="button">Restaurar condiciones habituales</button><span>Datos bancarios y membrete incluidos</span></div>
+        </section>
+      </div>
+      <aside class="summary" aria-labelledby="summary-title">
+        <div class="summary-panel">
+          <div class="summary-heading"><h2 id="summary-title">Tu propuesta</h2><span class="paper-size">Carta</span></div>
+          <div class="cover-preview" aria-label="Vista de la portada"><img src="assets/cover.png" alt="" loading="lazy"><div class="cover-preview-copy"><strong>PROPUESTA COMERCIAL</strong><span id="preview-project">Nombre del proyecto</span><span id="preview-client">Nombre del cliente</span><small id="preview-date"></small><small id="preview-folio">Folio pendiente</small></div></div>
+          <div class="summary-line"><span>Conceptos</span><strong id="summary-count">0</strong></div>
+          <div class="summary-total"><span>Total sin IVA</span><strong id="summary-total">$0,00</strong><small>Pesos mexicanos · MXN</small></div>
+          <div id="export-status" class="export-status"><span data-icon="info"></span><span>Importa tus conceptos y completa los campos obligatorios.</span></div>
+          <button id="preview" class="button button-secondary full-width" type="button" disabled><span data-icon="eye"></span>Vista previa</button>
+          <div class="download-grid"><button id="download-word" class="button button-primary" type="button" disabled><span data-icon="file"></span>Word</button><button id="download-pdf" class="button button-primary" type="button" disabled><span data-icon="download"></span>PDF</button></div>
+          <p class="privacy-note"><span data-icon="shield"></span>Los archivos se procesan en tu navegador. Las propuestas no se guardan en la app.</p>
+        </div>
+      </aside>
+    </div>
+    <footer class="footer"><span>Contech Secure Solutions</span><span>Generador de propuestas comerciales</span></footer>
+  </main>
+  <dialog id="mapping-dialog" class="mapping-dialog"><form method="dialog"><div class="dialog-heading"><h2>Identifica las columnas</h2><button class="icon-button" value="cancel" aria-label="Cerrar" type="submit"><span data-icon="close"></span></button></div><p id="mapping-help">Relaciona las columnas del archivo con los datos de la propuesta.</p><div class="fields-grid"><label id="mapping-table-label" class="field" hidden><span>Tabla detectada</span><select id="mapping-table"></select></label><label class="field"><span>Fila de encabezados</span><input id="mapping-header" type="number" min="1" step="1"></label></div><div id="mapping-fields" class="fields-grid"></div><p id="mapping-error" class="import-error" role="alert" hidden></p><div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancelar</button><button id="apply-mapping" class="button button-primary" type="button">Importar conceptos</button></div></form></dialog>
+  <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><div><h2>Vista previa</h2><p id="preview-dialog-name"></p></div><button id="close-preview" class="icon-button" type="button" aria-label="Cerrar vista previa"><span data-icon="close"></span></button></div><div class="preview-toolbar"><button id="preview-previous" class="button button-quiet button-small" type="button" disabled>Anterior</button><span id="preview-page" aria-live="polite"></span><button id="preview-next" class="button button-quiet button-small" type="button" disabled>Siguiente</button><button id="preview-zoom" class="button button-quiet button-small" type="button">Ampliar</button></div><div id="pdf-preview" aria-label="Vista previa de la propuesta comercial"><p id="preview-message" role="status">Cargando vista previa…</p><canvas id="preview-canvas" aria-label="Página de la propuesta" hidden></canvas></div><div class="dialog-actions"><button id="preview-download" class="button button-primary" type="button"><span data-icon="download"></span>Descargar PDF</button></div></dialog>
+  <script>if(location.protocol==='file:')document.getElementById('notice').outerHTML='<div class="notice" role="alert">Para usar la app, ábrela desde el enlace de alojamiento o el servidor local indicado en la guía.</div>';</script>
+</body>
+</html>

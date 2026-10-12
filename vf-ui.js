@@ -8,7 +8,7 @@ export function initFinalVersion(proposalToken=()=>null){
   let result=null,busy=false,token=null,tokenExpires=0;
   function tabs(ids,views,index){for(let i=0;i<ids.length;i++){const button=$(ids[i]);button.classList.toggle('active',i===index);button.setAttribute('aria-selected',String(i===index));button.tabIndex=i===index?0:-1;$(views[i]).hidden=i!==index;}}
   function connectTabs(ids,views){ids.forEach((id,index)=>{$(id).addEventListener('click',()=>tabs(ids,views,index));$(id).addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?ids.length-1:(index+(event.key==='ArrowRight'?1:-1)+ids.length)%ids.length;tabs(ids,views,next);$(ids[next]).focus();});});}
-  connectTabs(['proposal-section-tab','vf-section-tab'],['proposal-view','vf-view']);connectTabs(['vf-file-tab','vf-sheets-tab'],['vf-file-pane','vf-sheets-pane']);
+  connectTabs(['vf-file-tab','vf-sheets-tab'],['vf-file-pane','vf-sheets-pane']);
   function error(message){$('vf-error').textContent=message;$('vf-error').hidden=!message;}
   function progress(message){$('vf-progress').textContent=message;$('vf-progress').hidden=!message;}
   function lock(value){busy=value;$('vf-view').setAttribute('aria-busy',String(value));for(const id of ['vf-file','vf-import-sheets','vf-connect-google','vf-sheet-url'])$(id).disabled=value;for(const id of ['vf-preview','vf-download-excel','vf-download-pdf'])$(id).disabled=value||!result;}

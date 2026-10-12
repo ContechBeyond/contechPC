@@ -1,8 +1,42 @@
-# Propuestas comerciales Contech
+# Herramientas Contech
 
-Aplicación responsiva para importar conceptos, revisar importes y generar propuestas comerciales en Word editable y PDF tamaño carta. Utiliza el logo y la plantilla Contech suministrados, sin columna Unidad.
+Portal responsivo de herramientas para Contech. Incluye **Propuesta comercial**, para generar Word editable y PDF tamaño carta con la plantilla de la empresa, y **Versión final**, para convertir matrices VM a Excel y PDF VF.
+
+La página de inicio muestra el catálogo. El menú lateral permite cambiar de herramienta; en móvil se abre con el botón de menú y se cierra al elegir una opción, pulsar Escape o tocar fuera. Incluye navegación por teclado y mantiene los datos de los formularios al cambiar de herramienta o regresar a Inicio. Las rutas `#/herramientas`, `#/propuesta-comercial` y `#/version-final` permiten enlaces directos y funcionan con Atrás/Adelante, sin recargar la página ni configurar redirecciones en Render.
+
+## Añadir una herramienta
+
+El catálogo se define en `tools.js`. `portal.js` genera automáticamente el menú, las tarjetas, el contador, el título, la ubicación y las rutas a partir de ese registro. `portal.css` controla la distribución común y usa los colores de los temas claro y oscuro.
+
+1. Añade una sección a `index.html`, inicialmente con `hidden`, con un identificador único y un encabezado que pueda recibir foco, por ejemplo:
+
+   ```html
+   <section id="nueva-view" aria-labelledby="nueva-title" hidden>
+     <div class="page-heading"><h1 id="nueva-title" tabindex="-1">Nueva herramienta</h1></div>
+     <!-- Interfaz de la herramienta -->
+   </section>
+   ```
+
+2. Crea su módulo y registra la herramienta en el arreglo `TOOLS` de `tools.js`:
+
+   ```js
+   {
+     id:'nueva',slug:'nueva-herramienta',viewId:'nueva-view',headingId:'nueva-title',
+     title:'Nueva herramienta',description:'Describe brevemente lo que permite hacer.',
+     icon:'<path d="M4 4h16v16H4Z"/>',
+     load:()=>import('./nueva-herramienta.js').then(module=>module.initNuevaHerramienta())
+   }
+   ```
+
+   `id` y `slug` deben ser únicos; `herramientas` está reservado para Inicio. `badge` y `formats` son opcionales. El orden del arreglo determina el orden del catálogo y del menú.
+
+3. Inicializa los eventos propios de esa herramienta en su módulo. El portal ejecuta `load` una vez al abrirla, mantiene la vista montada y ofrece reintentar si la carga falla. Usa clases específicas para sus estilos y las variables de color compartidas. El menú puede crecer y desplazarse sin cambiar el código de navegación.
+
+Las dos herramientas de documentos comparten actualmente el módulo `app.js`, que inicializa sus controles una sola vez cuando se abre cualquiera de ellas. Sus generadores de Excel, Word y PDF siguen independientes de la navegación del portal.
 
 ## Uso
+
+Abre **Propuesta comercial** desde Inicio o el menú.
 
 1. En Google Sheets, descarga la matriz mediante **Archivo → Descargar → Microsoft Excel (.xlsx)**. Carga el archivo en la app, o usa el enlace de una hoja pública.
 2. La app busca primero la pestaña «Cliente». Si no existe, busca tablas por su contenido en las demás pestañas, con preferencia a «Cotización» o «Propuesta». Puedes cambiar la hoja seleccionada. Los enlaces normales de Sheets públicos se leen como un libro Excel completo para conservar los encabezados y detectar sus pestañas.
@@ -17,7 +51,7 @@ El botón de sol/luna de la cabecera cambia entre modo claro y oscuro. La primer
 
 ## Versión final (VM → VF)
 
-La pestaña **Versión final** recibe un archivo `.xlsx` o un enlace normal del libro completo de Google Sheets. Al cargarlo, prepara automáticamente el Excel VF y un único PDF con vista previa. No modifica la fuente ni guarda un historial.
+La herramienta **Versión final** recibe un archivo `.xlsx` o un enlace normal del libro completo de Google Sheets. Al cargarlo, prepara automáticamente el Excel VF y un único PDF con vista previa. No modifica la fuente ni guarda un historial.
 
 - Para un archivo, usa su nombre sin `.xlsx`. Para Sheets, obtiene el título original del libro desde la descarga de Google. Sustituye únicamente la marca `VM` por `VF`, conservando los demás caracteres y números. Acepta la marca separada o unida al folio, por ejemplo `VM161201102026` se convierte en `VF161201102026`. Un sufijo del archivo como `(4)` también se conserva.
 - Conserva `Resumen Costos` (o `Resumen`), `Matriz` y `Mano de Obra`, en ese orden y con sus nombres originales. Retira las demás hojas de la copia final.
@@ -104,6 +138,8 @@ python -m http.server 4173 --bind 127.0.0.1
 Después abre `http://127.0.0.1:4173/`. Para uso del equipo, utiliza el enlace HTTPS de Render.
 
 ## Validación de la versión
+
+Se verificaron el catálogo y el menú en escritorio y móvil de 390 px, en ambos temas; enlaces directos, Atrás/Adelante y conservación de formularios entre herramientas. El menú móvil devuelve el foco al cerrarse con Escape y se cierra al seleccionar una herramienta. Una tercera herramienta de prueba se registró sin modificar la navegación; también se comprobaron las cargas únicas, los reintentos y los cambios de ruta durante una carga. Los datos y scripts de estas pruebas permanecen fuera del repositorio.
 
 Se comprobó la importación de un archivo Excel con los importes de Cámaras — Tabachines, el total `$3.980,94`, la detección y corrección de diferencias, la vista previa y la descarga de ambos formatos. Una tabla de 30 conceptos se generó en Word y PDF y se revisó en sus 7 páginas. Se comprobó también la distribución de escritorio y de móvil de 390 px de ancho sin desbordamiento horizontal.
 

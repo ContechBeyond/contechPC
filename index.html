@@ -4,17 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#bf1b23">
-  <meta name="description" content="Herramientas Contech para agilizar tu trabajo: propuestas comerciales y conversión de matrices a versiones finales.">
+  <meta name="description" content="Herramientas Contech para crear matrices, generar propuestas comerciales y convertir matrices a versiones finales.">
   <title>Herramientas · Contech</title>
   <script src="theme.js"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="portal.css?portal=1">
+  <link rel="stylesheet" href="vm.css?vm=1">
   <script src="config.js"></script>
   <script src="vendor/xlsx.full.min.js" defer></script>
   <script src="vendor/jszip.min.js" defer></script>
-  <script type="module" src="portal.js?portal=1"></script>
+  <script type="module" src="portal.js?portal=2"></script>
 </head>
 <body>
   <a class="skip-link" href="#workspace">Saltar al contenido</a>
@@ -141,6 +142,54 @@
           <p class="help">Se conservarán, en este orden: Resumen Costos (o Resumen), Matriz y Mano de Obra.</p>
         </aside>
       </div>
+    </section>
+    <section id="vm-view" aria-labelledby="vm-title" hidden>
+      <div class="page-heading"><div><span class="eyebrow">VERSIÓN MATRIZ</span><h1 id="vm-title" tabindex="-1">Crear matriz</h1><p>Captura equipos y costos para generar el libro VM en Excel.</p></div></div>
+      <form id="vm-form" class="vm-workbench" novalidate>
+        <div class="vm-editor">
+          <section class="panel" aria-labelledby="vm-project-title">
+            <div class="section-heading"><span class="step-number">01</span><div><h2 id="vm-project-title">Datos del proyecto</h2><p>El cliente y el proyecto darán nombre al archivo.</p></div></div>
+            <div class="fields-grid"><label class="field"><span>Cliente <span class="required">*</span></span><input id="vm-client" maxlength="90" placeholder="Ej. Tabachines" required autocomplete="off"></label><label class="field"><span>Proyecto <span class="required">*</span></span><input id="vm-project" maxlength="90" placeholder="Ej. Videoportero" required autocomplete="off"></label></div>
+            <details class="vm-settings"><summary>Tipo de cambio y porcentajes</summary><div class="vm-settings-grid">
+              <label class="field"><span>Tipo de cambio MXN/USD</span><input id="vm-exchange-rate" inputmode="decimal" autocomplete="off" required></label>
+              <label class="field"><span>Indirectos (%)</span><input id="vm-indirect-pct" inputmode="decimal" autocomplete="off" required></label>
+              <label class="field"><span>Fee (%)</span><input id="vm-fee-pct" inputmode="decimal" autocomplete="off" required></label>
+              <label class="field"><span>Comisión (%)</span><input id="vm-commission-pct" inputmode="decimal" autocomplete="off" required></label>
+              <label class="field"><span>Aprovisionamiento (%)</span><input id="vm-provision-pct" inputmode="decimal" autocomplete="off" required></label>
+              <label class="field vm-settings-rounding"><span>Criterio de redondeo</span><select id="vm-rounding"><option value="precision">Conservar decimales internos</option><option value="unit-rounded">Redondear precio de venta unitario a 2 decimales</option></select><small>Los importes se muestran a 2 decimales en Excel.</small></label>
+            </div></details>
+            <p class="help">Los valores iniciales son los de tus matrices. Puedes ajustarlos para cada proyecto.</p>
+          </section>
+          <section class="panel" aria-labelledby="vm-equipment-title">
+            <div class="section-heading"><span class="step-number">02</span><div><h2 id="vm-equipment-title">Equipos y materiales</h2><p>Captura el costo de compra de cada partida.</p></div></div>
+            <div id="vm-equipment-list" class="vm-item-list"></div>
+            <button id="vm-add-equipment" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar equipo</button>
+            <p class="help">Acepta punto o coma decimal. Captura los números sin separadores de miles. Usa «-» en modelo, marca o proveedor cuando no aplique.</p>
+          </section>
+          <section class="panel" aria-labelledby="vm-additional-title">
+            <div class="section-heading"><span class="step-number">03</span><div><h2 id="vm-additional-title">Costos y desgloses opcionales</h2><p>Activa las secciones que necesite el proyecto.</p></div></div>
+            <div class="vm-section-toggles">
+              <label class="vm-section-toggle"><input id="vm-enable-labor" type="checkbox" aria-controls="vm-labor-section"><span><strong>Mano de obra</strong><small>Instalación y otros servicios.</small></span></label>
+              <label class="vm-section-toggle"><input id="vm-enable-volume" type="checkbox" aria-controls="vm-volume-section"><span><strong>Volumetría</strong><small>Desglose del material utilizado.</small></span></label>
+              <label class="vm-section-toggle"><input id="vm-enable-miscellaneous" type="checkbox" aria-controls="vm-miscellaneous-section"><span><strong>Misceláneos</strong><small>Consumibles de instalación.</small></span></label>
+            </div>
+            <section id="vm-labor-section" class="vm-optional-section" aria-labelledby="vm-labor-title" hidden><h3 id="vm-labor-title">Mano de obra</h3><div id="vm-labor-list" class="vm-item-list"></div><button id="vm-add-labor" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar servicio</button></section>
+            <section id="vm-volume-section" class="vm-optional-section" aria-labelledby="vm-volume-title" hidden><h3 id="vm-volume-title">Volumetría</h3><p class="help">Desglosa materiales con precio manual o vinculados a un equipo. Se presenta en su propia hoja y no se suma nuevamente al costo del proyecto.</p><div id="vm-volume-list" class="vm-item-list"></div><button id="vm-add-volume" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar material</button></section>
+            <section id="vm-miscellaneous-section" class="vm-optional-section" aria-labelledby="vm-miscellaneous-title" hidden><h3 id="vm-miscellaneous-title">Misceláneos</h3><p class="help">Se integrarán como un solo concepto de misceláneos en Matriz y Cliente.</p><div id="vm-miscellaneous-list" class="vm-item-list"></div><button id="vm-add-miscellaneous" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar consumible</button></section>
+          </section>
+        </div>
+        <aside class="panel vm-summary" aria-labelledby="vm-summary-title">
+          <div class="summary-heading"><h2 id="vm-summary-title">Tu matriz</h2><span class="paper-size">Excel</span></div>
+          <p class="eyebrow">NOMBRE DEL ARCHIVO</p><p id="vm-filename" class="vm-filename"></p>
+          <p id="vm-folio-help" class="vm-folio-help">El folio se genera al crear el archivo, con hora, minutos, día, mes y año de Ciudad de México.</p>
+          <div class="vm-summary-costs"><div class="summary-line"><span>Conceptos en Matriz</span><strong id="vm-item-count">0</strong></div><div class="summary-line"><span>Costo directo</span><strong id="vm-direct-total">—</strong></div><div class="summary-line"><span>Mano de obra</span><strong id="vm-labor-total">—</strong></div><div class="summary-line"><span>Misceláneos</span><strong id="vm-misc-total">—</strong></div><div class="summary-total"><span>Total sin IVA</span><strong id="vm-sale-total">—</strong><small>Pesos mexicanos · MXN</small></div></div>
+          <p id="vm-ready-status" class="vm-ready-status" role="status"></p>
+          <div id="vm-error" class="import-error" role="alert" hidden></div>
+          <button id="vm-download" class="button button-primary full-width" type="submit" disabled>Crear y descargar Excel VM</button>
+          <p id="vm-success" class="vm-success" role="status" hidden></p>
+          <p class="privacy-note">Incluye Resumen Costos, Matriz, Cliente y Mano de Obra. Volumetría y Misceláneos se agregan al activarlas. Los datos se mantienen durante esta sesión.</p>
+        </aside>
+      </form>
     </section>
     <footer class="footer"><span>Contech Secure Solutions</span><span>Herramientas para tu equipo</span></footer>
   </main>

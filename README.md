@@ -1,8 +1,8 @@
 # Herramientas Contech
 
-Portal responsivo de herramientas para Contech. Incluye **Propuesta comercial**, para generar Word editable y PDF tamaño carta con la plantilla de la empresa, y **Versión final**, para convertir matrices VM a Excel y PDF VF.
+Portal responsivo de herramientas para Contech. Incluye **Crear matriz (VM)**, para capturar equipos y costos en un Excel con fórmulas y formato de la empresa; **Propuesta comercial**, para generar Word editable y PDF tamaño carta; y **Versión final**, para convertir matrices VM a Excel y PDF VF.
 
-La página de inicio muestra el catálogo. El menú lateral permite cambiar de herramienta; en móvil se abre con el botón de menú y se cierra al elegir una opción, pulsar Escape o tocar fuera. Incluye navegación por teclado y mantiene los datos de los formularios al cambiar de herramienta o regresar a Inicio. Las rutas `#/herramientas`, `#/propuesta-comercial` y `#/version-final` permiten enlaces directos y funcionan con Atrás/Adelante, sin recargar la página ni configurar redirecciones en Render.
+La página de inicio muestra el catálogo. El menú lateral permite cambiar de herramienta; en móvil se abre con el botón de menú y se cierra al elegir una opción, pulsar Escape o tocar fuera. Incluye navegación por teclado y mantiene los datos de los formularios al cambiar de herramienta o regresar a Inicio. Las rutas `#/herramientas`, `#/crear-matriz`, `#/propuesta-comercial` y `#/version-final` permiten enlaces directos y funcionan con Atrás/Adelante, sin recargar la página ni configurar redirecciones en Render.
 
 ## Añadir una herramienta
 
@@ -32,7 +32,22 @@ El catálogo se define en `tools.js`. `portal.js` genera automáticamente el men
 
 3. Inicializa los eventos propios de esa herramienta en su módulo. El portal ejecuta `load` una vez al abrirla, mantiene la vista montada y ofrece reintentar si la carga falla. Usa clases específicas para sus estilos y las variables de color compartidas. El menú puede crecer y desplazarse sin cambiar el código de navegación.
 
-Las dos herramientas de documentos comparten actualmente el módulo `app.js`, que inicializa sus controles una sola vez cuando se abre cualquiera de ellas. Sus generadores de Excel, Word y PDF siguen independientes de la navegación del portal.
+Propuesta comercial y Versión final comparten el módulo `app.js`, que inicializa sus controles una sola vez cuando se abre cualquiera de ellas. Crear matriz usa `vm-ui.js`, con cálculos en `vm-core.js`, exportación en `vm-xlsx.js` y estilos en `vm.css`. Los generadores siguen independientes de la navegación del portal.
+
+## Crear matriz (VM)
+
+1. Abre **Crear matriz (VM)** y captura cliente y proyecto.
+2. Agrega los equipos o materiales con concepto, descripción, modelo, marca, proveedor, cantidad y precio de compra unitario. Elige USD o MXN por partida. Usa `-` en los datos de modelo, marca o proveedor que no apliquen. Se aceptan punto o coma decimal; captura los números sin separadores de miles.
+3. Activa **Mano de obra**, **Volumetría** o **Misceláneos** para mostrar sus formularios. Cada partida pide concepto, descripción, cantidad y precio en MXN; Volumetría también pide la unidad. Desactivar una sección conserva lo capturado durante la sesión y lo excluye de los cálculos y del archivo.
+4. Revisa **Tipo de cambio y porcentajes**. Los valores iniciales editables son 19 MXN/USD, indirectos 21.6%, fee 50%, comisión 5% y aprovisionamiento 3%. El cálculo aplica indirectos al costo directo, fee al costo integrado, y comisión y aprovisionamiento al costo más fee.
+5. El criterio predeterminado **Conservar decimales internos** conserva la precisión de los cálculos. La alternativa **Redondear precio de venta unitario a 2 decimales** multiplica ese precio redondeado por la cantidad. Los importes se muestran a dos decimales sin cambiar los valores internos del criterio predeterminado.
+6. Descarga el Excel. El folio se genera en ese momento, en hora de Ciudad de México, con `HHmmddMMyyyy`. El archivo se llama `<cliente> - <proyecto> VM <folio>.xlsx`.
+
+El libro incluye **Resumen Costos**, **Matriz**, **Cliente** y **Mano de Obra**, en ese orden. Mano de Obra queda con importes en cero cuando no se activa, para mantener la compatibilidad con Versión final. **Volumetria** y **Misceláneos** se agregan únicamente cuando se activan. La plantilla conserva los colores, fuentes, bordes, combinaciones y anchos de columna de las matrices de referencia. Las filas se adaptan a la cantidad de partidas y a sus textos; si una descripción excede la altura máxima de Excel, se pide acortarla.
+
+Las cantidades y precios de Mano de Obra y Misceláneos alimentan Matriz mediante referencias; Resumen Costos y Cliente toman los importes de Matriz. Las fórmulas se entregan con sus resultados calculados y se recalculan al abrir el libro en Excel. Los porcentajes se editan en Resumen Costos y el tipo de cambio en Matriz. La volumetría puede tomar el precio manual o referenciar el costo de un equipo dividido entre las unidades de su presentación, por ejemplo 152 metros por bobina. Es un desglose auxiliar y no se suma otra vez al total del proyecto.
+
+Se validan campos requeridos, cantidades mayores que cero, precios no negativos, porcentajes y referencias de volumetría a equipos existentes. Matriz y Cliente admiten hasta 200 conceptos. El archivo puede cargarse en las otras dos herramientas; Propuesta comercial mantiene su revisión de diferencias ocasionadas por los decimales internos.
 
 ## Uso
 
@@ -119,6 +134,7 @@ El permiso usado es `https://www.googleapis.com/auth/spreadsheets.readonly`. El 
 - `assets/cover.png`, `assets/letterhead.png` y `assets/bank.jpg`: imágenes del formato PDF.
 - `assets/logo.jpeg`: logo original para el modo claro de la app.
 - `assets/logo-dark.png`: versión con fondo transparente para el modo oscuro de la app.
+- `assets/vm-template.xlsx`: base de Crear matriz, con el formato original y sin conceptos, precios ni datos de los proyectos de ejemplo.
 - `styles.css`: apariencia responsiva de la app.
 
 Word mantiene el formato y las fuentes de la plantilla. El PDF usa Carlito, una fuente de licencia abierta compatible en métricas con Calibri, con el mismo tamaño de página, colores, membrete y márgenes. Puede haber diferencias pequeñas en cortes de línea o paginación entre Word y PDF.
@@ -139,7 +155,9 @@ Después abre `http://127.0.0.1:4173/`. Para uso del equipo, utiliza el enlace H
 
 ## Validación de la versión
 
-Se verificaron el catálogo y el menú en escritorio y móvil de 390 px, en ambos temas; enlaces directos, Atrás/Adelante y conservación de formularios entre herramientas. El menú móvil devuelve el foco al cerrarse con Escape y se cierra al seleccionar una herramienta. Una tercera herramienta de prueba se registró sin modificar la navegación; también se comprobaron las cargas únicas, los reintentos y los cambios de ruta durante una carga. Los datos y scripts de estas pruebas permanecen fuera del repositorio.
+Se verificaron el catálogo y el menú en escritorio y móvil de 390 px, en ambos temas; enlaces directos, Atrás/Adelante y conservación de formularios entre herramientas. El menú móvil devuelve el foco al cerrarse con Escape y se cierra al seleccionar una herramienta. Crear matriz se añadió mediante el registro del catálogo; también se comprobaron las cargas únicas, los reintentos y los cambios de ruta durante una carga. Los datos y scripts de las pruebas de integración permanecen fuera del repositorio.
+
+Crear matriz se comprobó con secciones opcionales activas e inactivas, costos USD/MXN, cantidades decimales, ambos criterios de redondeo, descarga desde el navegador y referencias de volumetría. Los archivos se abrieron y recalcularon en Microsoft Excel: Matriz, Resumen Costos y Cliente conciliaron sin errores de fórmula, y un cambio en el precio de Mano de Obra actualizó las hojas dependientes. También se revisó visualmente el formato de las seis hojas y se comprobó la importación de Cliente y la conversión VM → VF. Las pruebas de cálculo se ejecutan con `node --test tests/vm.test.mjs`.
 
 Se comprobó la importación de un archivo Excel con los importes de Cámaras — Tabachines, el total `$3.980,94`, la detección y corrección de diferencias, la vista previa y la descarga de ambos formatos. Una tabla de 30 conceptos se generó en Word y PDF y se revisó en sus 7 páginas. Se comprobó también la distribución de escritorio y de móvil de 390 px de ancho sin desbordamiento horizontal.
 

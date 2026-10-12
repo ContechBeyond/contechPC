@@ -60,7 +60,7 @@
           <div class="fields-grid">
             <label class="field"><span>Proyecto <span class="required">*</span></span><input id="project" maxlength="90" placeholder="Ej. Videoportero" required autocomplete="off"></label>
             <label class="field"><span>Cliente <span class="required">*</span></span><input id="client" maxlength="120" placeholder="Ej. Tabachines" required autocomplete="off"></label>
-            <label class="field"><span>Folio <span class="required">*</span></span><input id="folio" maxlength="40" placeholder="Ej. 163906102026" required autocomplete="off"></label>
+            <label class="field"><span>Folio <span class="required">*</span></span><input id="folio" maxlength="40" placeholder="Ej. 163906102026" required autocomplete="off" aria-describedby="folio-help"><small id="folio-help" aria-live="polite">Se sugiere desde el nombre del archivo o de Google Sheets. Puedes editarlo.</small></label>
             <label class="field"><span>Dirigida a</span><input id="recipient" maxlength="160" value="Estimado cliente" autocomplete="off"></label>
             <label class="field"><span>Fecha de emisión <span class="required">*</span></span><input id="issue-date" type="date" required></label>
             <label class="field"><span>Vigencia hasta <span class="required">*</span></span><input id="expiry-date" type="date" required></label>
@@ -91,7 +91,7 @@
       <div class="page-heading"><div><span class="eyebrow">VERSIÓN FINAL</span><h1>De matriz a versión final</h1><p>Prepara el Excel y el PDF de tu proyecto en un solo paso.</p></div></div>
       <div class="vf-workbench">
         <section class="panel" aria-labelledby="vf-import-title">
-          <div class="section-heading"><span class="step-number">01</span><div><h2 id="vf-import-title">Carga la versión matriz</h2><p>El nombre debe incluir «VM». Conservaremos el resto del nombre y el folio.</p></div></div>
+          <div class="section-heading"><span class="step-number">01</span><div><h2 id="vf-import-title">Carga la versión matriz</h2><p>El nombre debe incluir «VM», separado o pegado al folio. Conservaremos el resto del nombre.</p></div></div>
           <div class="tabs" role="tablist" aria-label="Origen de la versión matriz">
             <button id="vf-file-tab" class="tab active" role="tab" aria-selected="true" aria-controls="vf-file-pane" type="button"><span data-icon="upload"></span>Archivo Excel</button>
             <button id="vf-sheets-tab" class="tab" role="tab" aria-selected="false" aria-controls="vf-sheets-pane" tabindex="-1" type="button"><span data-icon="sheet"></span>Google Sheets</button>

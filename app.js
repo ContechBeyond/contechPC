@@ -1,13 +1,14 @@
-import {COLUMN_FIELDS,headerColumns,identifyHeaders,rankSheets,normalize,importMatrix,validateRows,money,cents,multipliedCents,editableMoney,todayMexico,lastDayOfMonth,coverDate,sheetReference} from './core.js';
+import {COLUMN_FIELDS,headerColumns,identifyHeaders,rankSheets,normalize,importMatrix,validateRows,money,cents,multipliedCents,editableMoney,todayMexico,lastDayOfMonth,coverDate,sheetReference,suggestedFolio} from './core.js';
 import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js';
 import {openPdfPreview,clearPreview} from './preview.js';
 import {initFinalVersion} from './vf-ui.js';
+import {exportTitle} from './vf-core.js';
 const $=id=>document.getElementById(id);
 const ICONS={upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',sheet:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h8M11 11v7"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8a7 7 0 0 1 11.8-3L20 8M4 16l2.6 3A7 7 0 0 0 18.4 16"/>',check:'<path d="m5 12 4 4L19 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',file:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/>',shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Zm-4 9 3 3 5-6"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>'};
 const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.info}</svg>`;
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const state={rows:[],declaredTotal:null,acceptedDifferences:new Map(),workbook:null,workbookSource:'Archivo',matrix:null,source:'',pending:null,defaults:null,busy:false,revision:0,pdf:null,googleToken:null,googleMetadata:null};
+const state={rows:[],declaredTotal:null,acceptedDifferences:new Map(),workbook:null,workbookSource:'Archivo',matrix:null,source:'',pending:null,defaults:null,busy:false,revision:0,pdf:null,googleToken:null,googleMetadata:null,detectedFolio:'',automaticFolio:''};
 function notice(message,error=false){$('notice').hidden=!message;$('notice').classList.toggle('error',error);$('notice').textContent=message;if(error)$('notice').scrollIntoView({block:'nearest',behavior:'smooth'});}
 function importError(error){$('import-error').textContent=error.message||String(error);$('import-error').hidden=false;}
 function formData(){return {project:$('project').value.trim(),client:$('client').value.trim(),folio:$('folio').value.trim(),recipient:$('recipient').value.trim(),issueDate:$('issue-date').value,expiryDate:$('expiry-date').value,technical:$('technical').value.trim(),commercial:$('commercial').value.trim()};}
@@ -18,6 +19,7 @@ function update(invalidate=true){
   if(invalidate){state.revision++;state.pdf=null;}
   const validation=validationResult(),missing=requiredIssues(),ready=validation.valid&&missing.length===0;
   $('preview-project').textContent=$('project').value.trim()||'Nombre del proyecto';$('preview-client').textContent=$('client').value.trim()||'Nombre del cliente';$('preview-folio').textContent=$('folio').value.trim()?'Folio: '+$('folio').value.trim():'Folio pendiente';$('preview-date').textContent=coverDate($('issue-date').value);
+  $('folio-help').textContent=state.detectedFolio?($('folio').value.trim()===state.detectedFolio?'Detectado en el nombre del archivo o libro. Puedes editarlo.':`Folio detectado en el nombre: ${state.detectedFolio}.`):'Se sugiere desde el nombre del archivo o de Google Sheets. Puedes editarlo.';
   $('summary-total').textContent=money(validation.total);$('summary-count').textContent=String(state.rows.length);$('row-count').textContent=String(state.rows.length);
   for(const id of ['preview','download-word','download-pdf'])$(id).disabled=!ready||state.busy;
   const status=$('export-status');status.classList.toggle('ready',ready);status.classList.toggle('error',state.rows.length>0&&validation.issues.length>0);
@@ -45,6 +47,12 @@ function addRow(){if(state.rows.length>=200){notice('La propuesta admite hasta 2
 $('manual-start').addEventListener('click',addRow);$('add-row').addEventListener('click',addRow);
 for(const id of ['project','client','folio','recipient','issue-date','expiry-date','technical','commercial'])$(id).addEventListener('input',()=>{notice('');update();});
 function sourceLabel(name){state.source=name;$('source-name').textContent=name;$('source-info').hidden=false;}
+function suggestSourceFolio(name){
+  state.detectedFolio=suggestedFolio(name);
+  const current=$('folio').value.trim();
+  if(!current||current===state.automaticFolio){$('folio').value=state.detectedFolio;state.automaticFolio=state.detectedFolio;}
+  update();
+}
 function adopt(imported,name){state.rows=imported.rows;state.declaredTotal=imported.declaredTotal;state.acceptedDifferences.clear();sourceLabel(name);$('import-error').hidden=true;renderRows();notice(`${state.rows.length} conceptos importados. Revisa la tabla antes de descargar.`);}
 function columnLabel(index){let out='';for(let n=index+1;n>0;n=Math.floor((n-1)/26))out=String.fromCharCode(65+(n-1)%26)+out;return out;}
 function renderMapping(){
@@ -78,6 +86,7 @@ function adoptWorkbook(workbook,name){
   $('worksheet').innerHTML=workbook.SheetNames.map(title=>`<option>${escapeHtml(title)}</option>`).join('');$('worksheet-label').hidden=workbook.SheetNames.length<2;
   const sheets=workbook.SheetNames.map(title=>({name:title,matrix:worksheetMatrix(workbook.Sheets[title])}));
   const chosen=rankSheets(sheets)[0];if(!chosen)throw new Error('El archivo no contiene hojas.');
+  suggestSourceFolio(name);
   $('worksheet').value=chosen.name;processMatrix(chosen.matrix,name+' · '+chosen.name);
 }
 async function readFile(file){
@@ -106,6 +115,7 @@ async function importSheets(){
       if(cliente)chosen={name:cliente.properties.title,matrix:await googleSheetMatrix(ref,cliente.properties.title)};
       else{const sheets=[];for(const sheet of meta.sheets)sheets.push({name:sheet.properties.title,matrix:await googleSheetMatrix(ref,sheet.properties.title)});chosen=rankSheets(sheets)[0];}
       if(!chosen)throw new Error('La hoja de Google Sheets no contiene pestañas.');
+      suggestSourceFolio(meta.properties.title);
       $('worksheet').value=chosen.name;processMatrix(chosen.matrix,meta.properties.title+' · '+chosen.name);
     }
     else{
@@ -114,7 +124,12 @@ async function importSheets(){
       const response=await fetch(url,{credentials:'omit'});if(!response.ok)throw new Error('No se pudo abrir el enlace. Si la hoja es privada, conecta Google o carga el archivo Excel.');
       const buffer=await response.arrayBuffer();if(buffer.byteLength>10*1024*1024)throw new Error('La hoja supera 10 MB. Descarga solo los conceptos como Excel y carga ese archivo.');
       if(/^\s*</.test(new TextDecoder().decode(buffer.slice(0,300))))throw new Error('La hoja solicita acceso. Conecta Google o carga el archivo Excel.');
-      adoptWorkbook(XLSX.read(buffer,{type:'array',cellDates:false,raw:true}),'Google Sheets');
+      const workbook=XLSX.read(buffer,{type:'array',cellDates:false,raw:true});
+      let title=exportTitle(response.headers.get('Content-Disposition'))||workbook.Props?.Title;
+      if(!title&&!ref.published){
+        try{const metadata=await fetch(`https://docs.google.com/spreadsheets/d/${ref.id}/htmlview`,{credentials:'omit'});if(metadata.ok)title=new DOMParser().parseFromString(await metadata.text(),'text/html').querySelector('title')?.textContent?.replace(/ - Google Drive$/,'');}catch{}
+      }
+      adoptWorkbook(workbook,title||'Google Sheets');
     }
   }catch(error){importError(error instanceof TypeError?new Error('No se pudo leer el enlace. Si la hoja es privada, conecta Google o carga el archivo Excel.'):error);}finally{button.disabled=false;button.innerHTML=icon('sheet')+'Importar hoja';}
 }
@@ -129,7 +144,7 @@ $('connect-google').addEventListener('click',async()=>{
 });
 function resetDates(){const today=todayMexico();$('issue-date').value=today;$('expiry-date').value=lastDayOfMonth(today);}
 $('restore-conditions').addEventListener('click',()=>{if(!state.defaults)return;$('technical').value=state.defaults.technical;$('commercial').value=state.defaults.commercial;update();notice('Se restauraron las condiciones habituales de Contech.');});
-$('reset').addEventListener('click',()=>{if((state.rows.length||$('project').value||$('client').value)&&!confirm('¿Empezar una nueva propuesta? Se borrarán los datos de esta propuesta.'))return;state.rows=[];state.declaredTotal=null;state.acceptedDifferences.clear();state.workbook=null;state.matrix=null;state.pending=null;state.googleMetadata=null;for(const id of ['project','client','folio','sheet-url'])$(id).value='';$('recipient').value='Estimado cliente';$('technical').value=state.defaults?.technical||'';$('commercial').value=state.defaults?.commercial||'';$('file').value='';$('source-info').hidden=true;$('worksheet-label').hidden=true;$('import-error').hidden=true;resetDates();renderRows();notice('');window.scrollTo({top:0,behavior:'smooth'});});
+$('reset').addEventListener('click',()=>{if((state.rows.length||$('project').value||$('client').value)&&!confirm('¿Empezar una nueva propuesta? Se borrarán los datos de esta propuesta.'))return;state.rows=[];state.declaredTotal=null;state.acceptedDifferences.clear();state.workbook=null;state.matrix=null;state.pending=null;state.googleMetadata=null;state.detectedFolio='';state.automaticFolio='';for(const id of ['project','client','folio','sheet-url'])$(id).value='';$('recipient').value='Estimado cliente';$('technical').value=state.defaults?.technical||'';$('commercial').value=state.defaults?.commercial||'';$('file').value='';$('source-info').hidden=true;$('worksheet-label').hidden=true;$('import-error').hidden=true;resetDates();renderRows();notice('');window.scrollTo({top:0,behavior:'smooth'});});
 async function exportDocument(type,preview=false){
   if(state.busy||requiredIssues().length||!validationResult().valid)return;
   const data=currentData();state.busy=true;update(false);notice('');

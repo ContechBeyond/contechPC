@@ -5,8 +5,9 @@ const direct=(parent,name)=>Array.from(parent.children).find(node=>node.namespac
 const normalized=name=>name.normalize('NFD').replace(/\p{Diacritic}/gu,'').trim().replace(/\s+/g,' ').toLowerCase();
 export function finalBookName(name){
   const base=String(name).replace(/\.xlsx$/i,'');
-  if(!/(^|[^\p{L}\p{N}_])VM(?=$|[^\p{L}\p{N}_])/u.test(base))throw new Error('El nombre del libro debe contener «VM» como palabra independiente.');
-  return base.replace(/(^|[^\p{L}\p{N}_])VM(?=$|[^\p{L}\p{N}_])/gu,'$1VF');
+  const marker=/(^|[^\p{L}\p{N}])VM(?=$|[^\p{L}\p{N}]|\d{12}(?!\d))/gu;
+  if(!marker.test(base))throw new Error('El nombre del libro debe contener «VM», separado o seguido de un folio de 12 dígitos.');
+  marker.lastIndex=0;return base.replace(marker,'$1VF');
 }
 export function exportTitle(disposition){
   const encoded=disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);

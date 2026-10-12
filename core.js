@@ -178,5 +178,15 @@ export function sheetReference(url) {
   const gid=parsed.searchParams.get('gid')||new URLSearchParams(parsed.hash.slice(1)).get('gid')||'0';
   return {id,gid,published:parsed.pathname.includes('/d/e/')};
 }
+export function suggestedFolio(name) {
+  const source=String(name??'');
+  const candidates=new Set(source.match(/(?<!\d)\d{12}(?!\d)/g)||[]);
+  if(candidates.size===1)return candidates.values().next().value;
+  if(candidates.size>1){
+    const marked=new Set(Array.from(source.matchAll(/(?:^|[^\p{L}\p{N}])V[MF][\s_:\-]*(\d{12})(?!\d)/giu),match=>match[1]));
+    if(marked.size===1)return marked.values().next().value;
+  }
+  return '';
+}
 export const conditionLines = text => String(text).split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
 export const fileName = data => `Propuesta comercial ${data.client} - ${data.project} ${data.folio}`.replace(/[<>:"/\\|?*\u0000-\u001F]/g,'').trim();

@@ -10,6 +10,27 @@
 .vm-item-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-5px 0 14px;font-size:.75rem;color:var(--muted)}
 .vm-item-toolbar .icon-button{width:36px;height:36px}
 .vm-item-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px 12px;align-items:end}
+.vm-item-grid.vm-equipment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.vm-model-lookup{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin:0 0 12px}
+.vm-model-lookup .field{margin:0;min-width:0}
+.vm-lookup-button{min-height:44px;white-space:nowrap}
+.vm-lookup-message{font-size:.8125rem;line-height:1.6;color:var(--muted);margin:8px 0 17px;overflow-wrap:anywhere}
+.vm-lookup-message.ready{color:var(--success)}
+.vm-lookup-message a{color:var(--red);text-decoration:underline}
+.vm-lookup-choices{display:flex;flex-direction:column;gap:9px;margin:12px 0 20px}
+.vm-product-choice{display:block;white-space:normal;text-align:left;line-height:1.5;overflow-wrap:anywhere}
+.vm-product-choice strong,.vm-product-choice small{display:block}
+.vm-product-choice small{font-weight:400;font-size:.75rem;margin-top:4px}
+.vm-syscom-connection{border:1px solid var(--line);background:var(--surface-subtle);border-radius:9px;padding:17px;margin-bottom:22px}
+.vm-syscom-connection strong{font-size:.875rem}
+.vm-syscom-connection .help{margin:0;font-size:.75rem}
+.vm-syscom-connection .vm-lookup-message{margin-bottom:8px}
+.vm-connector-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 19px;margin-top:12px}
+.vm-connector-actions .text-button{font-size:.8125rem}
+.vm-extension-help{margin-top:15px;font-size:.8125rem;color:var(--muted);line-height:1.65}
+.vm-extension-help summary{cursor:pointer;color:var(--ink);font-weight:600}
+.vm-extension-help ol{padding-left:20px;margin:12px 0}.vm-extension-help li{margin:8px 0}
+.vm-extension-help code{font-size:.75rem;overflow-wrap:anywhere}
 .vm-item-grid .field{min-width:0;margin:0}
 .vm-item-grid .field input,.vm-item-grid .field select{width:100%;min-width:0}
 .vm-item-grid .vm-field-wide{grid-column:1/-1}
@@ -48,5 +69,6 @@
   .vm-item-grid .vm-field-half{grid-column:1/-1}
   .vm-item-grid .vm-field-metadata{grid-column:1/-1}
   .vm-settings-grid{grid-template-columns:1fr}.vm-summary{position:static;padding:23px 20px}
+  .vm-model-lookup{grid-template-columns:1fr}.vm-lookup-button{width:100%}
   .vm-section-toggle{padding:14px 12px}.vm-settings-rounding{grid-column:auto}
 }

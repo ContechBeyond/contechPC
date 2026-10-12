@@ -37,7 +37,7 @@ Propuesta comercial y Versión final comparten el módulo `app.js`, que iniciali
 ## Crear matriz (VM)
 
 1. Abre **Crear matriz (VM)** y captura cliente y proyecto.
-2. Agrega los equipos o materiales con concepto, descripción, modelo, marca, proveedor, cantidad y precio de compra unitario. Elige USD o MXN por partida. Usa `-` en los datos de modelo, marca o proveedor que no apliquen. Se aceptan punto o coma decimal; captura los números sin separadores de miles.
+2. Agrega los equipos o materiales con concepto, descripción, modelo, marca, proveedor, cantidad y precio de compra unitario. Puedes completar los datos por modelo con la extensión de SYSCOM descrita abajo. Elige USD o MXN por partida. Usa `-` en los datos de modelo, marca o proveedor que no apliquen. Se aceptan punto o coma decimal; captura los números sin separadores de miles.
 3. Activa **Mano de obra**, **Volumetría** o **Misceláneos** para mostrar sus formularios. Cada partida pide concepto, descripción, cantidad y precio en MXN; Volumetría también pide la unidad. Desactivar una sección conserva lo capturado durante la sesión y lo excluye de los cálculos y del archivo.
 4. Revisa **Tipo de cambio y porcentajes**. Los valores iniciales editables son 19 MXN/USD, indirectos 21.6%, fee 50%, comisión 5% y aprovisionamiento 3%. El cálculo aplica indirectos al costo directo, fee al costo integrado, y comisión y aprovisionamiento al costo más fee.
 5. El criterio predeterminado **Conservar decimales internos** conserva la precisión de los cálculos. La alternativa **Redondear precio de venta unitario a 2 decimales** multiplica ese precio redondeado por la cantidad. Los importes se muestran a dos decimales sin cambiar los valores internos del criterio predeterminado.
@@ -48,6 +48,18 @@ El libro incluye **Resumen Costos**, **Matriz**, **Cliente** y **Mano de Obra**,
 Las cantidades y precios de Mano de Obra y Misceláneos alimentan Matriz mediante referencias; Resumen Costos y Cliente toman los importes de Matriz. Las fórmulas se entregan con sus resultados calculados y se recalculan al abrir el libro en Excel. Los porcentajes se editan en Resumen Costos y el tipo de cambio en Matriz. La volumetría puede tomar el precio manual o referenciar el costo de un equipo dividido entre las unidades de su presentación, por ejemplo 152 metros por bobina. Es un desglose auxiliar y no se suma otra vez al total del proyecto.
 
 Se validan campos requeridos, cantidades mayores que cero, precios no negativos, porcentajes y referencias de volumetría a equipos existentes. Matriz y Cliente admiten hasta 200 conceptos. El archivo puede cargarse en las otras dos herramientas; Propuesta comercial mantiene su revisión de diferencias ocasionadas por los decimales internos.
+
+## Consulta de modelos en SYSCOM
+
+**Crear matriz** incluye **Buscar en SYSCOM** en cada equipo. Requiere la extensión **Contech · Consulta SYSCOM** en Chrome de escritorio y tu sesión de distribuidor iniciada en ese mismo perfil. La app puede seguir publicada como Static Site en Render; la consulta ocurre en el navegador de cada compañero.
+
+Descarga el paquete desde **Descargar extensión** en la app y consulta **Cómo instalar y conectar**. Las instrucciones completas están en [extensions/contech-syscom/README.md](extensions/contech-syscom/README.md). Se instala la carpeta descomprimida desde `chrome://extensions`, se abre la app y se pulsa **Conectar esta app** en el icono de la extensión. Chrome solicita acceso únicamente al sitio de la app que conectaste y a SYSCOM. Se admiten direcciones `*.onrender.com` y pruebas locales.
+
+Al pulsar Buscar, abre una pestaña propia de SYSCOM y lee los resultados visibles de la primera página. Comprueba el modelo exacto antes de usar una ficha; cuando hay variantes o varias coincidencias, permite elegir. Completa concepto, descripción, modelo, marca y proveedor, conservando la cantidad. El costo solo se completa automáticamente cuando identifica una opción clara con moneda y sin IVA. Precios múltiples o con IVA sin identificar requieren selección del usuario. Los identificados con IVA quedan deshabilitados. Un costo o moneda que no se identifica permanece pendiente para captura manual.
+
+Se permite una consulta simultánea por perfil, 15 segundos entre búsquedas, 4 segundos entre resultados y ficha, y hasta 60 búsquedas por hora. Los límites y el estado de pausa se conservan al reiniciar Chrome. Los CAPTCHA y mensajes de bloqueo pausan las consultas hasta revisión y reanudación manual desde la extensión. Se puede cancelar la consulta desde el equipo. No hay consultas por cada tecla escrita, búsquedas masivas, reintentos automáticos de navegación ni alteraciones de la identificación del navegador. Estos límites son internos de Contech y no garantizan aceptación por SYSCOM.
+
+No se guardan contraseñas, precios ni fichas de productos, ni se extraen cookies. Se conservan únicamente las direcciones de apps autorizadas, marcas de tiempo para limitar consultas y la pausa; los candidatos de una selección son temporales. Para actualizar el ZIP después de cambiar la extensión, ejecuta `scripts/package-extension.ps1`. Cada compañero debe actualizar su carpeta y recargar la extensión en Chrome.
 
 ## Uso
 
@@ -135,6 +147,7 @@ El permiso usado es `https://www.googleapis.com/auth/spreadsheets.readonly`. El 
 - `assets/logo.jpeg`: logo original para el modo claro de la app.
 - `assets/logo-dark.png`: versión con fondo transparente para el modo oscuro de la app.
 - `assets/vm-template.xlsx`: base de Crear matriz, con el formato original y sin conceptos, precios ni datos de los proyectos de ejemplo.
+- `assets/contech-syscom-extension.zip`: extensión de Chrome lista para descomprimir e instalar. Su fuente está en `extensions/contech-syscom`.
 - `styles.css`: apariencia responsiva de la app.
 
 Word mantiene el formato y las fuentes de la plantilla. El PDF usa Carlito, una fuente de licencia abierta compatible en métricas con Calibri, con el mismo tamaño de página, colores, membrete y márgenes. Puede haber diferencias pequeñas en cortes de línea o paginación entre Word y PDF.
@@ -158,6 +171,8 @@ Después abre `http://127.0.0.1:4173/`. Para uso del equipo, utiliza el enlace H
 Se verificaron el catálogo y el menú en escritorio y móvil de 390 px, en ambos temas; enlaces directos, Atrás/Adelante y conservación de formularios entre herramientas. El menú móvil devuelve el foco al cerrarse con Escape y se cierra al seleccionar una herramienta. Crear matriz se añadió mediante el registro del catálogo; también se comprobaron las cargas únicas, los reintentos y los cambios de ruta durante una carga. Los datos y scripts de las pruebas de integración permanecen fuera del repositorio.
 
 Crear matriz se comprobó con secciones opcionales activas e inactivas, costos USD/MXN, cantidades decimales, ambos criterios de redondeo, descarga desde el navegador y referencias de volumetría. Los archivos se abrieron y recalcularon en Microsoft Excel: Matriz, Resumen Costos y Cliente conciliaron sin errores de fórmula, y un cambio en el precio de Mano de Obra actualizó las hojas dependientes. También se revisó visualmente el formato de las seis hojas y se comprobó la importación de Cliente y la conversión VM → VF. Las pruebas de cálculo se ejecutan con `node --test tests/vm.test.mjs`.
+
+La integración de SYSCOM se comprobó con el listado y una ficha pública actuales, sin sesión de distribuidor, y con pruebas simuladas del formulario, el puente y las API de Chrome. Se validaron modelos exactos, variantes, monedas, IVA, conservación de cantidad, cancelación, pausa, permisos por origen y límites de consultas. Las pruebas del controlador se ejecutan con `node --test tests/syscom.test.mjs`. Queda pendiente la prueba en Chrome instalado con el precio particular de la cuenta del distribuidor: el navegador conectado a esta conversación no dispone de esa sesión.
 
 Se comprobó la importación de un archivo Excel con los importes de Cámaras — Tabachines, el total `$3.980,94`, la detección y corrección de diferencias, la vista previa y la descarga de ambos formatos. Una tabla de 30 conceptos se generó en Word y PDF y se revisó en sus 7 páginas. Se comprobó también la distribución de escritorio y de móvil de 390 px de ancho sin desbordamiento horizontal.
 

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Contech · Consulta SYSCOM",
+  "version": "1.0.0",
+  "description": "Consulta un modelo en SYSCOM y lleva sus datos visibles a Crear matriz de Contech.",
+  "minimum_chrome_version": "120",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": [
+    "https://www.syscom.mx/*",
+    "https://syscom.mx/*",
+    "https://*.onrender.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_title": "Conectar Contech con SYSCOM", "default_popup": "popup.html"}
+}

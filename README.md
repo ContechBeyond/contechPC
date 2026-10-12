@@ -13,6 +13,8 @@ Aplicación responsiva para importar conceptos, revisar importes y generar propu
 
 Los datos de cada propuesta se mantienen únicamente durante la sesión de la página. Al recargarla se pierden. No hay historial ni base de datos. Los archivos y documentos se procesan en el navegador; solo la lectura de Google Sheets requiere comunicarse con Google.
 
+El botón de sol/luna de la cabecera cambia entre modo claro y oscuro. La primera visita sigue el tema del dispositivo; después se conserva la elección en este navegador y se sincroniza entre pestañas. Solo se guarda esa preferencia de apariencia. Ambos temas incluyen colores legibles para campos, tablas, mensajes y controles de teclado. La vista previa conserva los colores del documento que se descargará.
+
 ## Versión final (VM → VF)
 
 La pestaña **Versión final** recibe un archivo `.xlsx` o un enlace normal del libro completo de Google Sheets. Al cargarlo, prepara automáticamente el Excel VF y un único PDF con vista previa. No modifica la fuente ni guarda un historial.

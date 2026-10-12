@@ -6,8 +6,10 @@
   <meta name="theme-color" content="#bf1b23">
   <meta name="description" content="Genera propuestas comerciales Contech a partir de tus conceptos, con validación de importes y descarga de Word y PDF.">
   <title>Propuestas comerciales · Contech</title>
+  <script src="theme.js"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
   <script src="config.js"></script>
   <script src="vendor/xlsx.full.min.js" defer></script>
   <script src="vendor/jszip.min.js" defer></script>
@@ -18,7 +20,7 @@
     <div class="header-inner">
       <a class="brand" href="./" aria-label="Contech, inicio"><img src="assets/logo.jpeg" alt="Contech" width="800" height="234"></a>
       <div class="header-divider"></div><span class="header-name">Propuestas comerciales</span>
-      <span class="header-tag">Plantilla Contech</span>
+      <div class="header-actions"><span class="header-tag">Plantilla Contech</span><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"><span id="theme-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 13a9 9 0 0 1-9.8-9.8A9 9 0 1 0 20.8 13Z"/></svg></span><span id="theme-label">Modo oscuro</span></button></div>
     </div>
   </header>
   <main class="workspace">

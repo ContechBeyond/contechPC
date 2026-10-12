@@ -1,4 +1,8 @@
-import {calculateMatrix,matrixFolio,matrixBookName,vmNumber,miscellaneousText} from './vm-core.js';
+import {calculateMatrix,matrixFolio,matrixBookName,vmNumber,vmIsBlank,miscellaneousText} from './vm-core.js';
+const numberOrDash=value=>vmIsBlank(value)?'-':vmNumber(value);
+const amount=(entry,key)=>entry.complete?entry[key]:'-';
+const product=(a,b)=>`IF(AND(ISNUMBER(${a}),ISNUMBER(${b})),${a}*${b},"-")`;
+const guarded=(source,formula)=>`IF(ISNUMBER(${source}),${formula},"-")`;
 const MAIN='http://schemas.openxmlformats.org/spreadsheetml/2006/main',REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const list=(parent,name)=>Array.from(parent.getElementsByTagNameNS(MAIN,name));
 const direct=(parent,name)=>Array.from(parent.children).find(node=>node.namespaceURI===MAIN&&node.localName===name);
@@ -18,7 +22,7 @@ function stylesCatalog(doc){
   const root=doc.documentElement,xfs=direct(root,'cellXfs'),variants=new Map();
   function variant(original,key,edit){const id=original+':'+key;if(variants.has(id))return variants.get(id);const xf=xfs.children[Number(original)].cloneNode(true);edit(xf);const next=xfs.children.length;xfs.append(xf);xfs.setAttribute('count',String(xfs.children.length));variants.set(id,String(next));return String(next);}
   function quantity(original,value){
-    if(Number.isInteger(value))return original;
+    if(typeof value!=='number'||Number.isInteger(value))return original;
     let fmts=direct(root,'numFmts');if(!fmts){fmts=create(doc,'numFmts');root.insertBefore(fmts,root.firstChild);}
     let format=Array.from(fmts.children).find(node=>node.getAttribute('formatCode')==='0.##########');
     if(!format){format=create(doc,'numFmt');format.setAttribute('numFmtId',String(Math.max(163,...Array.from(fmts.children).map(n=>Number(n.getAttribute('numFmtId'))))+1));format.setAttribute('formatCode','0.##########');fmts.append(format);fmts.setAttribute('count',String(fmts.children.length));}
@@ -55,6 +59,7 @@ function worksheet(doc,{bodyRow,totalRow,headerRow=4,start,end,minimumHeight=37.
   const values=new Map();
   function clone(source,index){const row=source.cloneNode(true);row.setAttribute('r',String(index));for(const cell of Array.from(row.children)){cell.setAttribute('r',cellCol(cell.getAttribute('r'))+index);cell.replaceChildren();cell.removeAttribute('t');}return row;}
   function write(row,col,value,formula,quantity=false){
+    if(value===undefined||value===null||(typeof value==='string'&&!value.trim()))value='-';
     const address=col+row.getAttribute('r');let cell=Array.from(row.children).find(c=>c.getAttribute('r')===address);
     if(!cell){cell=create(doc,'c');cell.setAttribute('r',address);cell.setAttribute('s','1');const after=Array.from(row.children).find(c=>colNumber(cellCol(c.getAttribute('r')))>colNumber(col));row.insertBefore(cell,after||null);}
     cell.replaceChildren();cell.removeAttribute('t');if(quantity)cell.setAttribute('s',catalog.quantity(cell.getAttribute('s')||'1',value));
@@ -105,12 +110,12 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
     mat.write(row,'B',r-4);mat.write(row,'C',entry.concept,labor?`'Mano de Obra'!D${sourceRow}`:undefined);
     const descriptionFormula=misc?calculation.misc.map((_,i)=>`'Misceláneos'!C${5+i}`).join('&CHAR(10)&'):undefined;
     mat.write(row,'D',entry.description,descriptionFormula);
-    for(const [col,key] of [['E','brand'],['F','model'],['G','supplier']])mat.write(row,col,entry.kind==='equipment'?String(entry[key]).trim():'-');
-    mat.write(row,'H',entry.quantity,labor?`'Mano de Obra'!E${sourceRow}`:undefined,true);
-    mat.write(row,'I',entry.usdCost,entry.kind==='equipment'&&entry.currency==='USD'?undefined:`J${r}/$J$3`);
-    mat.write(row,'J',entry.mxnCost,labor?`'Mano de Obra'!F${sourceRow}`:misc?`'Misceláneos'!F${5+calculation.misc.length}`:entry.currency==='USD'?`I${r}*$J$3`:undefined);
-    const formulas=[labor?`'Mano de Obra'!G${sourceRow}`:`H${r}*J${r}`,`K${r}*$L$3`,`SUM(K${r}:L${r})`,`M${r}*$N$3`,`M${r}+N${r}`,`O${r}*$P$3`,`O${r}*$Q$3`,calculation.settings.rounding==='unit-rounded'?`H${r}*ROUND(J${r}*(1+$L$3)*(1+$N$3)*(1+$P$3+$Q$3),2)`:`SUM(O${r}:Q${r})`];
-    columns.forEach((col,i)=>mat.write(row,col,entry[keys[i]],formulas[i]));mat.fit(row);
+    for(const [col,key] of [['E','brand'],['F','model'],['G','supplier']])mat.write(row,col,entry.kind==='equipment'?String(entry[key]??'').trim():'-');
+    mat.write(row,'H',entry.quantityMissing?'-':entry.quantity,labor?`'Mano de Obra'!E${sourceRow}`:undefined,true);
+    mat.write(row,'I',entry.costMissing?'-':entry.usdCost,entry.kind==='equipment'&&entry.currency==='USD'?undefined:guarded(`J${r}`,`J${r}/$J$3`));
+    mat.write(row,'J',entry.costMissing?'-':entry.mxnCost,labor?`'Mano de Obra'!F${sourceRow}`:misc?`'Misceláneos'!F${5+calculation.misc.length}`:entry.currency==='USD'?guarded(`I${r}`,`I${r}*$J$3`):undefined);
+    const formulas=[labor?`'Mano de Obra'!G${sourceRow}`:product(`H${r}`,`J${r}`),guarded(`K${r}`,`K${r}*$L$3`),guarded(`K${r}`,`SUM(K${r}:L${r})`),guarded(`M${r}`,`M${r}*$N$3`),guarded(`M${r}`,`M${r}+N${r}`),guarded(`O${r}`,`O${r}*$P$3`),guarded(`O${r}`,`O${r}*$Q$3`),calculation.settings.rounding==='unit-rounded'?`IF(AND(ISNUMBER(H${r}),ISNUMBER(J${r})),H${r}*ROUND(J${r}*(1+$L$3)*(1+$N$3)*(1+$P$3+$Q$3),2),"-")`:guarded(`O${r}`,`SUM(O${r}:Q${r})`)];
+    columns.forEach((col,i)=>mat.write(row,col,amount(entry,keys[i]),formulas[i]));mat.fit(row);
   }
   const matHeader=mat.append(calculation.totalRow-1,mat.oldRows.get(12));columns.forEach((col,i)=>mat.write(matHeader,col,['Costo Directo','Costo Indirecto','Costo Integrado','Fee','Costo + Fee','Comisión','Aprovisionamiento','Total'][i]));
   const matTotal=mat.append(calculation.totalRow,mat.total);columns.forEach((col,i)=>mat.write(matTotal,col,calculation.totals[keys[i]],`SUM(${col}5:${col}${last})`));
@@ -124,23 +129,23 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
   outputs.set('Resumen Costos',summary.finish(7,['B2:K2','B7:C7']));
 
   const client=worksheet(docs.get('Cliente'),{bodyRow:5,totalRow:10,start:'B',end:'G',minimumHeight:93.75},catalog,measure);client.title('B2',input.project.trim(),['B','C','D','E','F','G']);
-  for(const entry of entries){const row=client.append(entry.row),r=entry.row;client.write(row,'B',r-4,`'Matriz'!B${r}`);client.write(row,'C',entry.concept,`'Matriz'!C${r}`);client.write(row,'D',entry.description,`'Matriz'!D${r}`);client.write(row,'E',entry.quantity,`'Matriz'!H${r}`,true);client.write(row,'F',entry.sellingUnit,`G${r}/E${r}`);client.write(row,'G',entry.total,`'Matriz'!R${r}`);client.fit(row);}
+  for(const entry of entries){const row=client.append(entry.row),r=entry.row;client.write(row,'B',r-4,`'Matriz'!B${r}`);client.write(row,'C',entry.concept,`'Matriz'!C${r}`);client.write(row,'D',entry.description,`'Matriz'!D${r}`);client.write(row,'E',entry.quantityMissing?'-':entry.quantity,`'Matriz'!H${r}`,true);client.write(row,'F',amount(entry,'sellingUnit'),`IF(AND(ISNUMBER(E${r}),E${r}>0,ISNUMBER(G${r})),G${r}/E${r},"-")`);client.write(row,'G',amount(entry,'total'),`'Matriz'!R${r}`);client.fit(row);}
   const clientTotal=client.append(last+1,client.total);client.write(clientTotal,'B','Total sin IVA');client.write(clientTotal,'G',calculation.totals.total,`SUM(G5:G${last})`);outputs.set('Cliente',client.finish(last+1,['B2:G2',`B${last+1}:F${last+1}`]));
 
   const labor=worksheet(docs.get('Mano de Obra'),{bodyRow:5,totalRow:7,start:'C',end:'G',minimumHeight:48},catalog,measure);
-  const laborItems=calculation.labor.length?calculation.labor:[{concept:'',quantity:0,unitCost:0}];
-  laborItems.forEach((item,i)=>{const row=labor.append(5+i);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',vmNumber(item.quantity),undefined,true);labor.write(row,'F',vmNumber(item.unitCost));labor.write(row,'G',vmNumber(item.quantity)*vmNumber(item.unitCost),`E${5+i}*F${5+i}`);labor.fit(row);});
+  const laborItems=calculation.labor.length?calculation.labor:[{concept:'',quantity:'',unitCost:''}];
+  laborItems.forEach((item,i)=>{const r=5+i,row=labor.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',numberOrDash(item.quantity),undefined,true);labor.write(row,'F',numberOrDash(item.unitCost));labor.write(row,'G',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`E${r}`,`F${r}`));labor.fit(row);});
   const laborEnd=5+laborItems.length,laborTotal=labor.append(laborEnd,labor.total);labor.write(laborTotal,'C','Total de mano de obra');labor.write(laborTotal,'G',calculation.laborDirect,`SUM(G5:G${laborEnd-1})`);outputs.set('Mano de Obra',labor.finish(laborEnd,['C2:G2',`C${laborEnd}:F${laborEnd}`]));
 
   if(docs.has('Volumetria')){
     const volume=worksheet(docs.get('Volumetria'),{bodyRow:5,totalRow:6,start:'B',end:'G'},catalog,measure);
-    calculation.volumes.forEach((item,i)=>{const r=5+i,row=volume.append(r);volume.write(row,'B',item.concept);volume.write(row,'C',item.description);volume.write(row,'D',item.quantity,undefined,true);volume.write(row,'E',item.unit);volume.write(row,'F',item.unitCost,item.sourceRow?`'Matriz'!J${item.sourceRow}/${vmNumber(item.unitsPerPack)}`:undefined);volume.write(row,'G',item.direct,`D${r}*F${r}`);volume.fit(row);});
+    calculation.volumes.forEach((item,i)=>{const r=5+i,row=volume.append(r),source=`'Matriz'!J${item.sourceRow}`;volume.write(row,'B',item.concept);volume.write(row,'C',item.description);volume.write(row,'D',item.quantityMissing?'-':item.quantity,undefined,true);volume.write(row,'E',String(item.unit??'').trim());volume.write(row,'F',item.costMissing?'-':item.unitCost,item.sourceRow&&!vmIsBlank(item.unitsPerPack)?guarded(source,`${source}/${vmNumber(item.unitsPerPack)}`):undefined);volume.write(row,'G',amount(item,'direct'),product(`D${r}`,`F${r}`));volume.fit(row);});
     const end=5+calculation.volumes.length,total=volume.append(end,volume.total);volume.write(total,'B','Total de volumetría');volume.write(total,'G',calculation.volumeDirect,`SUM(G5:G${end-1})`);outputs.set('Volumetria',volume.finish(end,['B2:G2',`B${end}:F${end}`]));
   }
   if(docs.has('Misceláneos')){
     const misc=worksheet(docs.get('Misceláneos'),{bodyRow:5,totalRow:6,start:'B',end:'F',minimumHeight:91.5},catalog,measure);
-    calculation.misc.forEach((item,i)=>{const r=5+i,row=misc.append(r);misc.write(row,'B',i+1);misc.write(row,'C',miscellaneousText(item));misc.write(row,'D',vmNumber(item.quantity),undefined,true);misc.write(row,'E',vmNumber(item.unitCost));misc.write(row,'F',vmNumber(item.quantity)*vmNumber(item.unitCost),`D${r}*E${r}`);misc.fit(row);});
-    const end=5+calculation.misc.length,total=misc.append(end,misc.total);misc.write(total,'B','TOTALES');misc.write(total,'F',calculation.miscDirect,`SUM(F5:F${end-1})`);outputs.set('Misceláneos',misc.finish(end,['B2:F2','B3:F3',`B${end}:E${end}`]));
+    calculation.misc.forEach((item,i)=>{const r=5+i,row=misc.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost);misc.write(row,'B',i+1);misc.write(row,'C',miscellaneousText(item));misc.write(row,'D',numberOrDash(item.quantity),undefined,true);misc.write(row,'E',numberOrDash(item.unitCost));misc.write(row,'F',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`D${r}`,`E${r}`));misc.fit(row);});
+    const end=5+calculation.misc.length,total=misc.append(end,misc.total);misc.write(total,'B','TOTALES');misc.write(total,'F',calculation.miscComplete?calculation.miscDirect:'-',`IF(COUNT(F5:F${end-1})>0,SUM(F5:F${end-1}),"-")`);outputs.set('Misceláneos',misc.finish(end,['B2:F2','B3:F3',`B${end}:E${end}`]));
   }
   let names=direct(workbook.documentElement,'definedNames');if(!names){names=create(workbook,'definedNames');workbook.documentElement.insertBefore(names,direct(workbook.documentElement,'calcPr')||null);}names.replaceChildren();
   for(const [index,sheet] of keep.entries()){

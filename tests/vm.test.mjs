@@ -40,3 +40,31 @@ test('valida cero, campos faltantes y enlaces de volumetría eliminados sin camb
   a.volume.enabled=false;assert.equal(validateMatrix(a).valid,true);
   a.project='';assert.equal(validateMatrix(a).valid,false);
 });
+test('solo el concepto es obligatorio en las partidas; los campos vacíos no inventan importes',()=>{
+  const a=input();a.equipment=[{id:'e1',concept:'Cámara'}];
+  for(const section of ['labor','miscellaneous','volume'])a[section]={enabled:true,items:[{id:section,concept:section}]};
+  assert.equal(validateMatrix(a).valid,true);
+  const c=calculateMatrix(a);assert.equal(c.entries.length,3);near(c.totals.total,0);near(c.volumeDirect,0);
+  assert.ok(c.entries.every(entry=>!entry.complete&&entry.costMissing));
+  assert.ok(c.entries[0].quantityMissing);assert.equal(c.entries[0].currency,'USD');
+  a.equipment[0].concept=' ';assert.equal(validateMatrix(a).valid,false);
+});
+test('distingue un precio cero de uno vacío y suma únicamente cantidades y precios capturados',()=>{
+  const a=input();a.equipment.push({id:'e2',concept:'Por definir',quantity:' ',unitCost:'100',currency:'MXN'});
+  a.equipment.push({id:'e3',concept:'Sin precio',quantity:4,unitCost:'',currency:'USD'});
+  a.equipment.push({id:'e4',concept:'Sin costo',quantity:1,unitCost:0,currency:'MXN'});
+  const c=calculateMatrix(a);near(c.totals.direct,200);assert.equal(c.entries[1].quantityMissing,true);
+  assert.equal(c.entries[2].costMissing,true);assert.equal(c.entries[3].complete,true);
+  near(c.entries[3].sellingUnit,0);
+  a.settings.rounding='unit-rounded';near(calculateMatrix(a).totals.total,2*196.99);
+  a.equipment[1].quantity='abc';assert.equal(validateMatrix(a).valid,false);
+  a.equipment[1].quantity=1;a.equipment[2].unitCost=-1;assert.equal(validateMatrix(a).valid,false);
+});
+test('la volumetría acepta datos pendientes y conserva la referencia al equipo',()=>{
+  const a=input();a.equipment[0].unitCost='';
+  a.volume={enabled:true,items:[{id:'v1',concept:'Cable',sourceEquipment:'e1',unitsPerPack:'',quantity:25}]};
+  assert.equal(validateMatrix(a).valid,true);let v=calculateMatrix(a).volumes[0];
+  assert.equal(v.sourceRow,5);assert.equal(v.costMissing,true);near(v.direct,0);
+  a.volume.items[0].unitsPerPack=100;assert.equal(calculateMatrix(a).volumes[0].costMissing,true);
+  a.equipment[0].unitCost=200;v=calculateMatrix(a).volumes[0];assert.equal(v.complete,true);near(v.direct,50);
+});

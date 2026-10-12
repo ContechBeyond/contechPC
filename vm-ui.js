@@ -15,7 +15,7 @@ export function initMatrixBuilder(){
   const format=value=>Number.isFinite(value)?money(Math.round(value*100)):'—';
   function element(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;}
   function invalidate(){ $('vm-error').hidden=true;$('vm-success').hidden=true;$('vm-folio-help').textContent='El folio se genera al crear el archivo, con hora, minutos, día, mes y año de Ciudad de México.';}
-  function field(section,item,key,label,{wide=false,metadata=false,required=true,max=100,numeric=false,textarea=false,options}={}){
+  function field(section,item,key,label,{wide=false,metadata=false,required=false,max=100,numeric=false,textarea=false,options}={}){
     const wrapper=element('label','field'+(wide?' vm-field-wide':'')+(metadata?' vm-field-metadata':'')),caption=element('span','',label);
     if(required){const mark=element('span','required',' *');caption.append(mark);}wrapper.append(caption);
     const control=element(options?'select':textarea?'textarea':'input');control.id=`vm-${item.id}-${key}`;control.dataset.key=key;control.required=required;
@@ -25,20 +25,24 @@ export function initMatrixBuilder(){
     control.addEventListener(options?'change':'input',()=>{item[key]=control.value;invalidate();if(section==='equipment')refreshVolumeChoices();update();});wrapper.append(control);return wrapper;
   }
   function renderRow(section,item,index){
-    const block=element('fieldset','vm-item');block.dataset.item=item.id;block.append(element('legend','',names[section]+' '+(index+1)));
+    const equipment=section==='equipment',block=element('fieldset','vm-item'+(equipment?' vm-equipment-item':'')),legend=element('legend',equipment?'sr-only':'',names[section]+' '+(index+1));block.dataset.item=item.id;block.append(legend);
+    let details,title,content=block;
+    if(equipment){details=element('details','vm-equipment-details');details.open=true;content=element('div','vm-equipment-body');block.append(details);}
     const bar=element('div','vm-item-toolbar'),total=element('output','vm-item-total','Costo directo: —'),remove=element('button','icon-button');remove.type='button';remove.setAttribute('aria-label',`Eliminar ${names[section].toLowerCase()} ${index+1}`);remove.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/></svg>';
-    remove.addEventListener('click',()=>{rows(section).splice(rows(section).indexOf(item),1);rowNodes.delete(item.id);block.remove();relabel(section);refreshVolumeChoices();invalidate();update();const next=$('vm-'+section+'-list').querySelector('input,textarea,select');(next||$('vm-add-'+section)).focus();});bar.append(total,remove);block.append(bar);
+    remove.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();rows(section).splice(rows(section).indexOf(item),1);rowNodes.delete(item.id);block.remove();relabel(section);refreshVolumeChoices();invalidate();update();const next=$('vm-'+section+'-list').querySelector('summary,input,textarea,select');(next||$('vm-add-'+section)).focus();});
+    if(equipment){const summary=element('summary','vm-equipment-summary'),heading=element('span','vm-equipment-heading'),chevron=element('span','vm-equipment-chevron');title=element('span','vm-equipment-title');heading.append(title,total);chevron.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';summary.append(heading,remove,chevron);details.append(summary,content);}
+    else{bar.append(total,remove);block.append(bar);}
     let lookupButton,lookupCancel,lookupMessage,lookupChoices;
     if(section==='equipment'){
       const lookup=element('div','vm-model-lookup');lookup.append(field(section,item,'model','Modelo',{metadata:true}));
-      lookupButton=element('button','button button-secondary vm-lookup-button','Buscar en SYSCOM');lookupButton.type='button';lookupButton.addEventListener('click',()=>queryProduct(item));lookup.append(lookupButton);block.append(lookup);
+      lookupButton=element('button','button button-secondary vm-lookup-button','Buscar en SYSCOM');lookupButton.type='button';lookupButton.addEventListener('click',()=>queryProduct(item));lookup.append(lookupButton);content.append(lookup);
       lookup.querySelector('input').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(!lookupButton.disabled)queryProduct(item);}});
       lookupMessage=element('p','vm-lookup-message');lookupMessage.setAttribute('role','status');lookupMessage.textContent='Busca por modelo para completar los datos del equipo.';
       lookupCancel=element('button','text-button','Cancelar consulta');lookupCancel.type='button';lookupCancel.hidden=true;lookupCancel.addEventListener('click',()=>client.request('cancel').catch(error=>{lookupMessage.textContent=error.message;}));
-      lookupChoices=element('div','vm-lookup-choices');lookupChoices.hidden=true;block.append(lookupMessage,lookupCancel,lookupChoices);
+      lookupChoices=element('div','vm-lookup-choices');lookupChoices.hidden=true;content.append(lookupMessage,lookupCancel,lookupChoices);
     }
     const grid=element('div','vm-item-grid'+(section==='equipment'?' vm-equipment-grid':''));
-    grid.append(field(section,item,'concept','Concepto',{wide:true,max:180}),field(section,item,'description','Descripción',{wide:true,textarea:true,max:section==='miscellaneous'?600:1200}));
+    grid.append(field(section,item,'concept','Concepto',{wide:true,required:true,max:180}),field(section,item,'description','Descripción',{wide:true,textarea:true,max:section==='miscellaneous'?600:1200}));
     if(section==='equipment')for(const [key,label] of [['brand','Marca'],['supplier','Proveedor']])grid.append(field(section,item,key,label,{metadata:true}));
     grid.append(field(section,item,'quantity','Cantidad',{numeric:true,max:30}));
     if(section==='volume')grid.append(field(section,item,'unit','Unidad',{max:20}));
@@ -49,10 +53,10 @@ export function initMatrixBuilder(){
       const sourceField=field(section,item,'sourceEquipment','Precio del material',{wide:true,required:false,options:[['','Capturar precio manual']]}),unitsField=field(section,item,'unitsPerPack','Unidades por presentación del equipo',{wide:true,numeric:true,max:30});
       source=sourceField.querySelector('select');units=unitsField;unitsField.append(element('small','','Ej. 152 metros por bobina. El precio se toma del equipo y se divide entre estas unidades.'));grid.append(sourceField,unitsField);
     }
-    block.append(grid);$('vm-'+section+'-list').append(block);rowNodes.set(item.id,{block,total,source,units,cost:grid.querySelector('[data-key="unitCost"]'),lookupButton,lookupCancel,lookupMessage,lookupChoices});
+    content.append(grid);$('vm-'+section+'-list').append(block);rowNodes.set(item.id,{block,legend,details,title,remove,total,source,units,cost:grid.querySelector('[data-key="unitCost"]'),lookupButton,lookupCancel,lookupMessage,lookupChoices});
     refreshVolumeChoices();return block;
   }
-  function relabel(section){const items=rows(section);items.forEach((item,i)=>{const node=rowNodes.get(item.id);node.block.querySelector('legend').textContent=names[section]+' '+(i+1);node.block.querySelector('button').setAttribute('aria-label',`Eliminar ${names[section].toLowerCase()} ${i+1}`);});
+  function relabel(section){const items=rows(section);items.forEach((item,i)=>{const node=rowNodes.get(item.id);if(section!=='equipment'){node.legend.textContent=names[section]+' '+(i+1);node.remove.setAttribute('aria-label',`Eliminar ${names[section].toLowerCase()} ${i+1}`);}});
     const list=$('vm-'+section+'-list');list.querySelector('.vm-empty-list')?.remove();if(!items.length)list.append(element('p','vm-empty-list','Agrega una partida para incluirla en la matriz.'));
   }
   function addRow(section,focus=false){
@@ -70,17 +74,19 @@ export function initMatrixBuilder(){
     return {unit:cost,total:vmNumber(item.quantity)>0&&cost>=0?vmNumber(item.quantity)*cost:NaN};
   }
   function update(){
+    for(const id of ['vm-collapse-equipment','vm-expand-equipment'])$(id).disabled=busy||!state.equipment.length;
     for(const [section,name] of Object.entries(names)){
       $('vm-add-'+section).disabled=busy||rows(section).length>=VM_MAX_ITEMS;
       for(const item of rows(section)){
         const node=rowNodes.get(item.id),cost=rowCost(section,item);node.total.textContent='Costo directo: '+format(cost.total);
         if(section==='equipment'){
+          const concept=item.concept.trim()||'Equipo sin concepto';node.title.textContent=concept;node.legend.textContent=concept;node.remove.setAttribute('aria-label',`Eliminar ${concept}`);
           node.lookupButton.disabled=busy||Boolean(lookupCurrent)||!connector||Boolean(connector.paused)||Date.now()<cooldownUntil||item.model.trim().length<2;
           node.lookupButton.textContent=lookupCurrent?.item===item?'Consultando…':'Buscar en SYSCOM';node.lookupCancel.hidden=lookupCurrent?.item!==item;
           for(const control of node.block.querySelectorAll('input,textarea,select,button'))if(control!==node.lookupButton&&control!==node.lookupCancel)control.disabled=busy||lookupCurrent?.item===item||control.dataset.includesVat==='true';
           node.lookupCancel.disabled=busy;
         }
-        if(section==='volume'){const linked=Boolean(item.sourceEquipment);node.units.hidden=!linked;node.units.querySelector('input').required=linked;node.cost.readOnly=linked;node.cost.value=linked&&Number.isFinite(cost.unit)?String(cost.unit):linked?'':item.unitCost;}
+        if(section==='volume'){const linked=Boolean(item.sourceEquipment);node.units.hidden=!linked;node.cost.readOnly=linked;node.cost.value=linked&&Number.isFinite(cost.unit)?String(cost.unit):linked?'':item.unitCost;}
       }
     }
     const result=validateMatrix(state);let calculation;
@@ -145,6 +151,7 @@ export function initMatrixBuilder(){
   for(const [key,id] of Object.entries(settingsFields)){$(id).value=String(state.settings[key]);$(id).addEventListener(key==='rounding'?'change':'input',()=>{state.settings[key]=$(id).value;invalidate();update();});}
   for(const key of ['client','project'])$('vm-'+key).addEventListener('input',()=>{state[key]=$('vm-'+key).value;invalidate();update();});
   for(const section of Object.keys(names))$('vm-add-'+section).addEventListener('click',()=>addRow(section,true));
+  for(const [id,open] of [['vm-collapse-equipment',false],['vm-expand-equipment',true]])$(id).addEventListener('click',()=>{for(const item of state.equipment)rowNodes.get(item.id).details.open=open;});
   for(const section of ['labor','volume','miscellaneous'])$('vm-enable-'+section).addEventListener('change',()=>{state[section].enabled=$('vm-enable-'+section).checked;$('vm-'+section+'-section').hidden=!state[section].enabled;if(state[section].enabled&&!rows(section).length)addRow(section);invalidate();update();});
   root.addEventListener('submit',async event=>{
     event.preventDefault();if(busy||lookupCurrent)return;const validation=validateMatrix(state);if(!validation.valid){$('vm-error').textContent=validation.issues[0].message;$('vm-error').hidden=false;return;}

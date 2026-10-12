@@ -83,7 +83,8 @@ El permiso usado es `https://www.googleapis.com/auth/spreadsheets.readonly`. El 
 - `assets/defaults.json`: condiciones habituales, textos introductorios y confidencialidad. Las modificaciones aparecerán al abrir una nueva sesión de la app.
 - `assets/template.docx`: base Word con el formato suministrado, membrete, tabla nativa y fuentes incrustadas. Los datos de la propuesta de ejemplo se sustituyeron por marcadores genéricos. Sus marcadores sirven como referencias del generador; cambiar su estructura requiere ajustar `exporters.js`.
 - `assets/cover.png`, `assets/letterhead.png` y `assets/bank.jpg`: imágenes del formato PDF.
-- `assets/logo.jpeg`: logo mostrado en la app.
+- `assets/logo.jpeg`: logo original para el modo claro de la app.
+- `assets/logo-dark.png`: versión con fondo transparente para el modo oscuro de la app.
 - `styles.css`: apariencia responsiva de la app.
 
 Word mantiene el formato y las fuentes de la plantilla. El PDF usa Carlito, una fuente de licencia abierta compatible en métricas con Calibri, con el mismo tamaño de página, colores, membrete y márgenes. Puede haber diferencias pequeñas en cortes de línea o paginación entre Word y PDF.

@@ -1,7 +1,7 @@
 // Register tools here. The portal builds its menu, cards and routes from this list.
 // Existing document tools share one initializer; module imports run it only once.
 // A new URL keeps the pre-portal bootstrap out of existing browser caches.
-const loadDocumentTools=()=>import('./app.js?portal=1');
+const loadDocumentTools=()=>import('./app.js?portal=2');
 
 export const TOOLS=[
   {

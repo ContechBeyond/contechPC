@@ -23,12 +23,13 @@ export function sheetReferences(formula){
   return result;
 }
 export function preservedSheets(names){
-  const choose=(aliases,label)=>{
+  const choose=(aliases,label,optional=false)=>{
     const found=names.filter(name=>aliases.includes(normalized(name)));
+    if(optional&&!found.length)return null;
     if(found.length!==1)throw new Error(found.length?`Hay dos hojas de ${label}. Conserva una sola «Resumen Costos» o «Resumen» en la VM.`:`No se encontró la hoja «${label}».`);
     return found[0];
   };
-  return [choose(['resumen costos','resumen'],'Resumen Costos'),choose(['matriz'],'Matriz'),choose(['mano de obra'],'Mano de Obra')];
+  return [choose(['resumen costos','resumen'],'Resumen Costos'),choose(['matriz'],'Matriz'),choose(['mano de obra'],'Mano de Obra',true)].filter(Boolean);
 }
 function parseXml(text,path){
   const doc=new DOMParser().parseFromString(text,'application/xml');

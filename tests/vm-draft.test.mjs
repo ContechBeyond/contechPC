@@ -20,7 +20,7 @@ function incompleteState(){
 }
 
 test('restaura un borrador incompleto, decimales exactos, secciones desactivadas y vínculos',()=>{
-  const storage=memoryStorage(),state=incompleteState(),ui={equipment:{'equipment-1':{open:false,pricePending:true},'equipment-2':{open:true,pricePending:false}}};
+  const storage=memoryStorage(),state=incompleteState(),ui={activeTab:'volume',equipment:{'equipment-1':{open:false,pricePending:true},'equipment-2':{open:true,pricePending:false}}};
   const written=writeMatrixDraft(storage,state,ui);assert.equal(written.ok,true);
   const restored=readMatrixDraft(storage);assert.equal(restored.status,'restored');
   assert.deepEqual(restored.draft.state,state);assert.deepEqual(restored.draft.ui,ui);assert.equal(restored.draft.savedAt,written.savedAt);
@@ -38,6 +38,7 @@ test('los defaults se reconstruyen en objetos separados sin exigir una matriz v�
   assert.equal(restored.state.equipment[0].currency,'USD');assert.equal(restored.state.equipment[0].unit,'m');
   assert.deepEqual(restored.state.settings,VM_DEFAULTS);
   assert.deepEqual(restored.ui.equipment['equipment-1'],{open:true,pricePending:false});
+  assert.equal(restored.ui.activeTab,'data');
 });
 
 test('solo persiste campos autorizados, sin tokens, trabajos ni datos de sesión',()=>{

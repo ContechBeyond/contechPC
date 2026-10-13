@@ -1,4 +1,4 @@
-import {TOOLS} from './tools.js?portal=7';
+import {TOOLS} from './tools.js?portal=8';
 
 export function initPortal({tools=TOOLS,document:doc=globalThis.document,window:win=globalThis.window}={}){
   const $=id=>doc.getElementById(id),homeSlug='herramientas';
@@ -73,6 +73,8 @@ export function initPortal({tools=TOOLS,document:doc=globalThis.document,window:
   function focusContent(){const tool=currentTool();$(tool?.headingId||'tools-home-title').focus({preventScroll:true});}
   async function renderRoute(focus=false){
     const revision=++routeRevision,tool=currentTool();
+    const extension=$('vm-extension-control');
+    if(extension){extension.hidden=tool?.id!=='matrix-builder';$('vm-syscom-menu').hidden=true;$('vm-syscom-toggle').setAttribute('aria-expanded','false');}
     if(!tool&&win.location.hash!=='#/'+homeSlug)win.history.replaceState(null,'','#/'+homeSlug);
     setDrawer(false);
     $('tools-home').hidden=Boolean(tool);

@@ -66,7 +66,7 @@ async function fixture(t,{stored={},writeDenied=false,removeDenied=false,accessD
   const cards=(section='equipment')=>[...$('vm-'+section+'-list').querySelectorAll('.vm-item')];
   function input(control,value){control.value=value;control.dispatchEvent(new win.Event(control.tagName==='SELECT'?'change':'input',{bubbles:true}));}
   const fill=(card,key,value)=>input(card.querySelector('[data-key="'+key+'"]'),value);
-  function enable(section,checked=true){const control=$('vm-enable-'+section);control.checked=checked;control.dispatchEvent(new win.Event('change',{bubbles:true}));}
+  function openSection(section){$('vm-tab-'+section).click();if(!cards(section).length)$('vm-add-'+section).click();}
   function expand(card,open){const detail=card.querySelector('details');detail.open=open;detail.dispatchEvent(new win.Event('toggle'));}
   async function waitFor(check){
     for(let i=0;i<100;i++){if(check())return;await new Promise(resolve=>previous.setTimeout(resolve,10));}
@@ -85,7 +85,7 @@ async function fixture(t,{stored={},writeDenied=false,removeDenied=false,accessD
   }
   await waitFor(()=>$('vm-syscom-status').textContent.includes('Extensión conectada'));
   const pause=milliseconds=>new Promise(resolve=>previous.setTimeout(resolve,milliseconds));
-  return {$,cards,input,fill,enable,expand,waitFor,draft,snapshot,query,escape,actions,storage,win,close,pause};
+  return {$,cards,input,fill,openSection,expand,waitFor,draft,snapshot,query,escape,actions,storage,win,close,pause};
 }
 
 test('el borrador de la matriz sobrevive a una recarga sin consultas ni generación automática',async t=>{
@@ -98,28 +98,29 @@ test('el borrador de la matriz sobrevive a una recarga sin consultas ni generaci
   assert.equal(first.draft().state.equipment[0].unitCost,'151.23456789');
   first.$('vm-add-equipment').click();const unfinished=first.cards()[1];
   first.fill(unfinished,'description','Partida a medio llenar');first.fill(unfinished,'quantity','');
-  first.enable('labor');const labor=first.cards('labor')[0];
+  first.openSection('labor');const labor=first.cards('labor')[0];
   first.fill(labor,'concept','Instalación');first.fill(labor,'quantity','75');first.fill(labor,'unitCost','49.248');
   first.$('vm-add-labor').click();first.fill(first.cards('labor')[1],'description','Servicio todavía sin concepto');
-  first.enable('labor',false);
-  first.enable('volume');const volume=first.cards('volume')[0];
+  first.openSection('volume');const volume=first.cards('volume')[0];
   first.fill(volume,'concept','Cable utilizado');first.fill(volume,'quantity','75');first.fill(volume,'sourceEquipment',equipment.dataset.item);first.fill(volume,'unitsPerPack','152');
-  first.enable('miscellaneous');const miscellaneous=first.cards('miscellaneous')[0];
+  first.openSection('miscellaneous');const miscellaneous=first.cards('miscellaneous')[0];
   first.fill(miscellaneous,'concept','Conectores');first.fill(miscellaneous,'description','Precio por confirmar');first.fill(miscellaneous,'unitCost','');
   first.expand(equipment,false);first.expand(unfinished,true);
   const saved=first.draft(),stored=first.snapshot();
-  assert.equal(saved.version,1);assert.equal(saved.state.labor.enabled,false);assert.equal(saved.state.labor.items.length,2);
+  assert.equal(saved.version,1);assert.equal(saved.state.labor.enabled,true);assert.equal(saved.state.labor.items.length,2);
+  assert.equal(saved.ui.activeTab,'miscellaneous');
   assert.equal(saved.ui.equipment[equipment.dataset.item].open,false);
   assert.equal(saved.state.equipment[1].concept,'');assert.equal(saved.state.equipment[1].quantity,'');
   first.close();
 
   const restored=await fixture(t,{stored});
   assert.deepEqual(restored.draft().state,saved.state);
+  assert.equal(restored.$('vm-tab-miscellaneous').getAttribute('aria-selected'),'true');assert.equal(restored.$('vm-miscellaneous-section').hidden,false);
   assert.equal(restored.$('vm-client').value,'Residencial Tabachines');assert.equal(restored.$('vm-project').value,'Cámaras y acceso');
   for(const [key,id] of Object.entries(settingsFields))assert.equal(restored.$(id).value,String(saved.state.settings[key]));
   assert.equal(restored.cards().length,2);assert.equal(restored.cards()[0].querySelector('details').open,false);assert.equal(restored.cards()[1].querySelector('details').open,true);
-  assert.equal(restored.$('vm-enable-labor').checked,false);assert.equal(restored.$('vm-labor-section').hidden,true);assert.equal(restored.cards('labor').length,2);
-  restored.enable('labor');assert.equal(restored.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'49.248');
+  assert.equal(restored.$('vm-enable-labor'),null);assert.equal(restored.$('vm-labor-section').hidden,true);assert.equal(restored.cards('labor').length,2);
+  restored.openSection('labor');assert.equal(restored.$('vm-labor-section').hidden,false);assert.equal(restored.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'49.248');
   assert.equal(restored.cards('volume')[0].querySelector('[data-key="sourceEquipment"]').value,equipment.dataset.item);
   assert.equal(restored.cards('volume')[0].querySelector('[data-key="unitsPerPack"]').value,'152');
   assert.equal(restored.cards('miscellaneous')[0].querySelector('[data-key="unitCost"]').value,'');
@@ -149,7 +150,7 @@ test('un precio pendiente recuperado conserva el bloqueo y permite pasar a captu
 test('limpiar todo requiere confirmación y solo borra el borrador de la matriz',async t=>{
   const ui=await fixture(t,{stored:{'contech-theme':'dark','contech-propuesta-test':'otra propuesta'}}),equipment=ui.cards()[0];
   ui.input(ui.$('vm-client'),'Cliente por conservar');ui.input(ui.$('vm-project'),'Proyecto por conservar');ui.input(ui.$('vm-fee-pct'),'60');
-  ui.fill(equipment,'concept','Equipo conservado');ui.enable('volume');ui.fill(ui.cards('volume')[0],'concept','Material conservado');
+  ui.fill(equipment,'concept','Equipo conservado');ui.openSection('volume');ui.fill(ui.cards('volume')[0],'concept','Material conservado');
   const before=ui.draft().state;
   ui.$('vm-clear-draft').click();const dialog=ui.$('vm-clear-dialog');assert.equal(dialog.open,true);
   assert.deepEqual(ui.draft().state,before);ui.$('vm-clear-cancel').click();assert.equal(dialog.open,false);assert.deepEqual(ui.draft().state,before);
@@ -159,7 +160,8 @@ test('limpiar todo requiere confirmación y solo borra el borrador de la matriz'
   assert.equal(ui.$('vm-client').value,'');assert.equal(ui.$('vm-project').value,'');assert.equal(ui.cards().length,1);
   assert.equal(ui.cards()[0].querySelector('[data-key="concept"]').value,'');assert.equal(ui.cards()[0].querySelector('[data-key="unitCost"]').value,'');assert.equal(ui.cards()[0].querySelector('details').open,true);
   for(const [key,id] of Object.entries(settingsFields))assert.equal(ui.$(id).value,String(VM_DEFAULTS[key]));
-  for(const section of ['labor','volume','miscellaneous']){assert.equal(ui.$('vm-enable-'+section).checked,false);assert.equal(ui.$('vm-'+section+'-section').hidden,true);assert.equal(ui.cards(section).length,0);}
+  for(const section of ['labor','volume','miscellaneous']){assert.equal(ui.$('vm-enable-'+section),null);assert.equal(ui.$('vm-'+section+'-section').hidden,true);assert.equal(ui.cards(section).length,0);}
+  assert.equal(ui.$('vm-data-section').hidden,false);assert.equal(ui.$('vm-tab-data').getAttribute('aria-selected'),'true');
   assert.equal(ui.$('vm-success').hidden,true);assert.equal(ui.$('vm-download').disabled,true);assert.equal(ui.actions.filter(action=>action!=='ping').length,0);
   // Clearing must not immediately repopulate storage with an empty draft.
   await ui.pause(30);assert.equal(ui.storage.getItem(DRAFT_KEY),null);
@@ -213,12 +215,12 @@ test('un borrador inválido se conserva intacto hasta editar o confirmar su elim
 test('recuperar una matriz solo con mano de obra respeta la lista de equipos vacía',async t=>{
   const first=await fixture(t);first.input(first.$('vm-client'),'Tabachines');first.input(first.$('vm-project'),'Mantenimiento');
   first.cards()[0].querySelector('summary .icon-button').click();assert.equal(first.cards().length,0);
-  first.enable('labor');const labor=first.cards('labor')[0];first.fill(labor,'concept','Servicio de mantenimiento');first.fill(labor,'quantity','2');first.fill(labor,'unitCost','175.234567');
+  first.openSection('labor');const labor=first.cards('labor')[0];first.fill(labor,'concept','Servicio de mantenimiento');first.fill(labor,'quantity','2');first.fill(labor,'unitCost','175.234567');
   const saved=first.draft(),stored=first.snapshot();assert.deepEqual(saved.state.equipment,[]);assert.equal(first.$('vm-download').disabled,false);first.close();
   const restored=await fixture(t,{stored});await restored.pause(30);
   assert.equal(restored.cards().length,0);assert.equal(restored.$('vm-equipment-list').querySelector('.vm-empty-list')!==null,true);
   assert.equal(restored.$('vm-collapse-equipment').disabled,true);assert.equal(restored.$('vm-expand-equipment').disabled,true);
-  assert.equal(restored.$('vm-enable-labor').checked,true);assert.equal(restored.cards('labor').length,1);assert.equal(restored.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'175.234567');
+  assert.equal(restored.$('vm-enable-labor'),null);assert.equal(restored.cards('labor').length,1);assert.equal(restored.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'175.234567');
   assert.equal(restored.$('vm-download').disabled,false);assert.equal(restored.$('vm-item-count').textContent,'1');assert.deepEqual(restored.draft().state,saved.state);
   assert.equal(restored.actions.filter(action=>action!=='ping').length,0);assert.equal(restored.$('vm-success').hidden,true);
   restored.$('vm-add-equipment').click();assert.equal(restored.cards().length,1);assert.notEqual(restored.cards()[0].dataset.item,labor.dataset.item);
@@ -228,12 +230,26 @@ test('recuperar una matriz solo con mano de obra respeta la lista de equipos vac
 test('si removeItem falla, confirmar la limpieza conserva el formulario y avisa',async t=>{
   const ui=await fixture(t,{removeDenied:true,stored:{'contech-theme':'dark','otra-herramienta':'conservar'}});
   ui.input(ui.$('vm-client'),'Cliente conservado');ui.input(ui.$('vm-project'),'Proyecto conservado');ui.input(ui.$('vm-exchange-rate'),'18.987654321');
-  ui.fill(ui.cards()[0],'concept','Equipo conservado');ui.fill(ui.cards()[0],'unitCost','100.123456');ui.enable('miscellaneous');ui.fill(ui.cards('miscellaneous')[0],'concept','Consumible conservado');
+  ui.fill(ui.cards()[0],'concept','Equipo conservado');ui.fill(ui.cards()[0],'unitCost','100.123456');ui.openSection('miscellaneous');ui.fill(ui.cards('miscellaneous')[0],'concept','Consumible conservado');
   const saved=ui.storage.getItem(DRAFT_KEY);
   ui.$('vm-clear-draft').click();ui.$('vm-clear-confirm').click();assert.equal(ui.$('vm-clear-dialog').open,false);
   await ui.pause(30);assert.equal(ui.storage.getItem(DRAFT_KEY),saved);assert.equal(ui.$('vm-client').value,'Cliente conservado');assert.equal(ui.$('vm-project').value,'Proyecto conservado');
   assert.equal(ui.$('vm-exchange-rate').value,'18.987654321');assert.equal(ui.cards()[0].querySelector('[data-key="concept"]').value,'Equipo conservado');assert.equal(ui.cards()[0].querySelector('[data-key="unitCost"]').value,'100.123456');
-  assert.equal(ui.$('vm-enable-miscellaneous').checked,true);assert.equal(ui.cards('miscellaneous')[0].querySelector('[data-key="concept"]').value,'Consumible conservado');
+  assert.equal(ui.$('vm-enable-miscellaneous'),null);assert.equal(ui.cards('miscellaneous')[0].querySelector('[data-key="concept"]').value,'Consumible conservado');
   assert.equal(ui.$('vm-draft-status').classList.contains('warning'),true);assert.match(ui.$('vm-draft-status').textContent,/no.*eliminar|no.*borrar/i);
   assert.equal(ui.storage.getItem('contech-theme'),'dark');assert.equal(ui.storage.getItem('otra-herramienta'),'conservar');
+});
+
+test('los borradores anteriores incluyen las partidas con datos aunque su casilla estaba desactivada',async t=>{
+  const first=await fixture(t);first.input(first.$('vm-client'),'Tabachines');first.input(first.$('vm-project'),'Servicio');
+  first.cards()[0].querySelector('summary .icon-button').click();first.openSection('labor');
+  const labor=first.cards('labor')[0];first.fill(labor,'concept','Instalación conservada');first.fill(labor,'quantity','2');first.fill(labor,'unitCost','175.234567');
+  const legacy=first.draft();legacy.state.labor.enabled=false;delete legacy.ui.activeTab;
+  const stored=first.snapshot();stored[DRAFT_KEY]=JSON.stringify(legacy);first.close();
+  const restored=await fixture(t,{stored});
+  assert.equal(restored.$('vm-tab-data').getAttribute('aria-selected'),'true');assert.equal(restored.$('vm-labor-section').hidden,true);
+  assert.equal(restored.$('vm-download').disabled,false);assert.equal(restored.$('vm-item-count').textContent,'1');
+  restored.openSection('labor');assert.equal(restored.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'175.234567');
+  restored.input(restored.$('vm-project'),'Servicio actualizado');assert.equal(restored.draft().state.labor.enabled,true);
+  assert.equal(restored.actions.filter(action=>action!=='ping').length,0);
 });

@@ -1,4 +1,4 @@
-import {VM_MAX_ITEMS,validateMatrix,calculateMatrix,vmNumber,matrixBookName} from './vm-core.js';
+import {VM_MAX_ITEMS,validateMatrix,calculateMatrix,vmNumber,matrixBookName,vmSectionItems} from './vm-core.js';
 import {buildMatrixWorkbook} from './vm-xlsx.js';
 import {createBlankMatrixState,readMatrixDraft,writeMatrixDraft,removeMatrixDraft} from './vm-draft.js';
 import {money} from './core.js';
@@ -11,9 +11,10 @@ export function initMatrixBuilder(){
   const state=createBlankMatrixState();
   let storage;try{storage=window.localStorage;}catch{/* Editing still works when browser storage is blocked. */}
   const recovered=readMatrixDraft(storage);if(recovered.status==='restored')Object.assign(state,recovered.draft.state);
-  let savingReady=false,lastDraftSnapshot;
+  let savingReady=false,lastDraftSnapshot,activeTab=recovered.status==='restored'?recovered.draft.ui.activeTab:'data';
   let nextId=0,busy=false,lookupCurrent=null,connector=null,cooldownUntil=0,cooldownTimer,noticeTimer,noticeItem;
   const rowNodes=new Map(),names={equipment:'Equipo',labor:'Servicio',volume:'Material',miscellaneous:'Consumible'};
+  const tabNames={data:'Datos',equipment:'Equipos y materiales',labor:'Mano de obra',volume:'Volumetría',miscellaneous:'Misceláneos'},tabs=Object.keys(tabNames);
   const settingsFields={exchangeRate:'vm-exchange-rate',indirectPct:'vm-indirect-pct',feePct:'vm-fee-pct',commissionPct:'vm-commission-pct',provisionPct:'vm-provision-pct',rounding:'vm-rounding'};
   const rows=section=>section==='equipment'?state.equipment:state[section].items;
   const format=value=>Number.isFinite(value)?money(Math.round(value*100)):'—';
@@ -21,7 +22,7 @@ export function initMatrixBuilder(){
     const node=$('vm-draft-status');if(node.textContent!==message)node.textContent=message;node.classList.toggle('warning',warning);
   }
   function draftUi(){
-    return {equipment:Object.fromEntries(state.equipment.map(item=>{const node=rowNodes.get(item.id);return [item.id,{open:node.details.open,pricePending:node.pricePending}];}))};
+    return {activeTab,equipment:Object.fromEntries(state.equipment.map(item=>{const node=rowNodes.get(item.id);return [item.id,{open:node.details.open,pricePending:node.pricePending}];}))};
   }
   function draftSnapshot(){return JSON.stringify({state,ui:draftUi()});}
   function saveDraft(){
@@ -34,7 +35,29 @@ export function initMatrixBuilder(){
   function syncMainFields(){
     for(const key of ['client','project'])$('vm-'+key).value=state[key];
     for(const [key,id] of Object.entries(settingsFields))$(id).value=String(state.settings[key]);
-    for(const section of ['labor','volume','miscellaneous']){$('vm-enable-'+section).checked=state[section].enabled;$('vm-'+section+'-section').hidden=!state[section].enabled;}
+  }
+  function selectTab(section,{focus=false,save=true}={}){
+    if(!tabs.includes(section))section='data';activeTab=section;
+    for(const name of tabs){const selected=name===section,button=$('vm-tab-'+name);button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.classList.toggle('active',selected);$('vm-'+name+'-section').hidden=!selected;}
+    const button=$('vm-tab-'+section);if(focus)button.focus();button.scrollIntoView?.({block:'nearest',inline:'nearest'});
+    if(save)saveDraft();
+  }
+  function issueControl(issue){
+    const parts=issue?.path?.split('.')||[],section=parts[0];
+    if(['client','project'].includes(section))return {tab:'data',control:$('vm-'+section)};
+    if(section==='settings')return {tab:'data',control:$(settingsFields[parts[1]])};
+    if(section in names){const item=rows(section)[Number(parts[1])];return {tab:section,control:item?rowNodes.get(item.id)?.block.querySelector('[data-key="'+parts[2]+'"]'):null,item};}
+    return {tab:'data'};
+  }
+  function reviewIssue(issue){
+    const {tab,control,item}=issueControl(issue);selectTab(tab);
+    if(tab==='equipment'&&item)rowNodes.get(item.id).details.open=true;
+    if(control){const details=control.closest('details');if(details)details.open=true;control.focus();}
+    else $('vm-tab-'+tab).focus();
+  }
+  function closeConnectionMenu(restoreFocus=false){
+    const menu=$('vm-syscom-menu'),button=$('vm-syscom-toggle');if(menu.hidden)return;
+    menu.hidden=true;button.setAttribute('aria-expanded','false');if(restoreFocus)button.focus();
   }
   function clearDraft(){
     if(busy||lookupCurrent)return;
@@ -43,7 +66,7 @@ export function initMatrixBuilder(){
     savingReady=false;clearTimeout(noticeTimer);noticeItem=null;$('vm-add-notice').hidden=true;
     for(const node of rowNodes.values())clearTimeout(node.attentionTimer);
     rowNodes.clear();for(const section of Object.keys(names))$('vm-'+section+'-list').replaceChildren();
-    Object.assign(state,createBlankMatrixState());nextId=0;syncMainFields();addRow('equipment');invalidate();update();
+    Object.assign(state,createBlankMatrixState());nextId=0;syncMainFields();addRow('equipment');for(const section of ['labor','volume','miscellaneous'])relabel(section);selectTab('data',{save:false});invalidate();update();
     // Establish a new baseline before queued <details> toggle events run.
     // A cleared or untouched form must not recreate a blank saved draft.
     lastDraftSnapshot=draftSnapshot();savingReady=true;
@@ -61,7 +84,7 @@ export function initMatrixBuilder(){
     node.pricePending=false;node.lookupChoices.hidden=true;node.lookupMessage.textContent='Captura manual: puedes indicar el precio o dejarlo vacío.';clearAddAttention(item);
   }
   function pendingPriceNotice(item,loading=false){
-    const node=rowNodes.get(item.id);if(!node)return;node.details.open=true;
+    const node=rowNodes.get(item.id);if(!node)return;selectTab('equipment');node.details.open=true;
     const concept=item.concept.trim()||'este equipo',notice=$('vm-add-notice');clearTimeout(noticeTimer);noticeItem=item.id;
     notice.textContent=loading?`Espera a que termine la consulta de ${concept} antes de agregar otro equipo.`:`Selecciona el precio de ${concept} o elige «Capturar precio manualmente» antes de agregar otro equipo.`;notice.hidden=false;
     noticeTimer=setTimeout(()=>{notice.hidden=true;noticeItem=null;},5000);
@@ -125,7 +148,7 @@ export function initMatrixBuilder(){
       if(pending){pendingPriceNotice(pending,Boolean(lookupCurrent));return;}
       const previous=state.equipment.at(-1);if(previous)rowNodes.get(previous.id).details.open=false;
     }
-    const item={id:section+'-'+(++nextId),concept:'',description:'',quantity:'1',unitCost:'',model:'',brand:'',supplier:'',currency:'USD',unit:'m',sourceEquipment:'',unitsPerPack:''};rows(section).push(item);$('vm-'+section+'-list').querySelector('.vm-empty-list')?.remove();const node=renderRow(section,item,rows(section).length-1);invalidate();update();if(focus)node.querySelector('input').focus();
+    const item={id:section+'-'+(++nextId),concept:'',description:'',quantity:section==='equipment'?'1':'',unitCost:'',model:'',brand:'',supplier:'',currency:'USD',unit:'m',sourceEquipment:'',unitsPerPack:''};rows(section).push(item);$('vm-'+section+'-list').querySelector('.vm-empty-list')?.remove();const node=renderRow(section,item,rows(section).length-1);invalidate();update();if(focus){selectTab(section);node.querySelector('input').focus();}
   }
   function refreshVolumeChoices(){
     for(const item of state.volume.items){const node=rowNodes.get(item.id);if(!node?.source)continue;const options=[['','Capturar precio manual'],...state.equipment.map((equipment,i)=>[equipment.id,`${i+1}. ${equipment.concept.trim()||'Equipo sin nombre'}`])];if(item.sourceEquipment&&!options.some(([id])=>id===item.sourceEquipment))options.push([item.sourceEquipment,'Equipo eliminado: elige otra opción']);node.source.replaceChildren(...options.map(([value,title])=>{const option=element('option','',title);option.value=value;return option;}));node.source.value=item.sourceEquipment;
@@ -138,6 +161,10 @@ export function initMatrixBuilder(){
     return {unit:cost,total:vmNumber(item.quantity)>0&&cost>=0?vmNumber(item.quantity)*cost:NaN};
   }
   function update(){
+    const included=Object.fromEntries(Object.keys(names).map(section=>[section,vmSectionItems(section,rows(section))]));
+    for(const section of ['labor','volume','miscellaneous'])state[section].enabled=Boolean(included[section].length);
+    for(const section of Object.keys(names))$('vm-tab-'+section+'-count').textContent=String(included[section].length);
+    for(const section of tabs)$('vm-tab-'+section).disabled=busy;
     for(const id of ['vm-collapse-equipment','vm-expand-equipment'])$(id).disabled=busy||!state.equipment.length;
     for(const [section,name] of Object.entries(names)){
       $('vm-add-'+section).disabled=busy||rows(section).length>=VM_MAX_ITEMS;
@@ -156,12 +183,13 @@ export function initMatrixBuilder(){
     }
     const result=validateMatrix(state);let calculation;
     if(result.valid)try{calculation=calculateMatrix(state);}catch(error){result.valid=false;result.issues.push({message:error.message});}
-    const count=state.equipment.length+(state.labor.enabled?state.labor.items.length:0)+(state.miscellaneous.enabled&&state.miscellaneous.items.length?1:0);
+    const count=included.equipment.length+included.labor.length+(included.miscellaneous.length?1:0);
     $('vm-item-count').textContent=String(count);
     if($('vm-success').hidden)$('vm-filename').textContent=matrixBookName(state.client.trim()||'Cliente',state.project.trim()||'Proyecto','000000000000').replace(/000000000000$/,'[folio automático]')+'.xlsx';
     for(const [id,value] of [['vm-direct-total',calculation?.totals.direct],['vm-labor-total',calculation?.laborDirect],['vm-misc-total',calculation?.miscDirect],['vm-sale-total',calculation?.totals.total]])$(id).textContent=format(value);
     $('vm-download').disabled=busy||Boolean(lookupCurrent)||!result.valid;$('vm-download').textContent=busy?'Preparando Excel…':'Crear y descargar Excel VM';
     const status=$('vm-ready-status');status.classList.toggle('ready',result.valid);status.textContent=busy?'Preparando las hojas y sus fórmulas…':result.valid?'Lista para generar el Excel con fórmulas y referencias.':result.issues.slice(0,2).map(issue=>issue.message).join(' ');
+    const review=$('vm-review-issues');review.hidden=busy||result.valid||!result.issues.length;review.textContent='Revisar '+tabNames[issueControl(result.issues[0]).tab];review.disabled=busy;
     $('vm-clear-draft').disabled=busy||Boolean(lookupCurrent);saveDraft();
   }
   function connectionStatus(){
@@ -169,6 +197,8 @@ export function initMatrixBuilder(){
     node.classList.toggle('ready',Boolean(connector&&!connector.paused));
     const remaining=seconds>=60?Math.ceil(seconds/60)+' min':seconds+' s';
     node.textContent=!connector?'Instala la extensión de Chrome y conecta esta app desde su icono.':connector.paused?'Consultas pausadas. Revisa SYSCOM y reanuda desde la extensión.':seconds?`Extensión conectada. Próxima búsqueda en ${remaining}.`:'Extensión conectada. Consulta un modelo a la vez.';
+    const status=!connector?'disconnected':connector.paused?'warning':'ready',label=!connector?'SYSCOM: extensión desconectada':connector.paused?'SYSCOM: consultas pausadas':'SYSCOM: extensión conectada';
+    $('vm-extension-control').dataset.state=status;$('vm-syscom-dot').dataset.state=status;$('vm-syscom-toggle').setAttribute('aria-label',label);$('vm-syscom-toggle').title=label;
   }
   function cooldown(milliseconds){
     cooldownUntil=Math.max(cooldownUntil,Date.now()+milliseconds);clearInterval(cooldownTimer);connectionStatus();
@@ -214,6 +244,13 @@ export function initMatrixBuilder(){
     finally{lookupCurrent=null;await refreshConnection();update();}
   }
   const client=createSyscomClient({onReady:refreshConnection});
+  // A slow lazy load may finish after the user has left the matrix tool.
+  $('vm-extension-control').hidden=Boolean(window.location.hash&&window.location.hash!=='#/crear-matriz');
+  $('vm-syscom-toggle').addEventListener('click',()=>{const button=$('vm-syscom-toggle'),menu=$('vm-syscom-menu'),open=menu.hidden;menu.hidden=!open;button.setAttribute('aria-expanded',String(open));if(open)refreshConnection();});
+  $('vm-syscom-close').addEventListener('click',()=>closeConnectionMenu(true));
+  document.addEventListener('click',event=>{if(!$('vm-extension-control').contains(event.target))closeConnectionMenu();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('vm-syscom-menu').hidden){event.preventDefault();closeConnectionMenu(true);}});
+  $('vm-extension-control').addEventListener('focusout',event=>{if(event.relatedTarget&&!$('vm-extension-control').contains(event.relatedTarget))closeConnectionMenu();});
   $('vm-syscom-refresh').addEventListener('click',refreshConnection);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)saveDraft();else refreshConnection();});
   window.addEventListener('pagehide',saveDraft);
@@ -221,12 +258,13 @@ export function initMatrixBuilder(){
   for(const key of ['client','project'])$('vm-'+key).addEventListener('input',()=>{state[key]=$('vm-'+key).value;invalidate();update();});
   for(const section of Object.keys(names))$('vm-add-'+section).addEventListener('click',()=>addRow(section,true));
   for(const [id,open] of [['vm-collapse-equipment',false],['vm-expand-equipment',true]])$(id).addEventListener('click',()=>{for(const item of state.equipment)rowNodes.get(item.id).details.open=open;saveDraft();});
-  for(const section of ['labor','volume','miscellaneous'])$('vm-enable-'+section).addEventListener('change',()=>{state[section].enabled=$('vm-enable-'+section).checked;$('vm-'+section+'-section').hidden=!state[section].enabled;if(state[section].enabled&&!rows(section).length)addRow(section);invalidate();update();});
+  for(const section of tabs){const button=$('vm-tab-'+section);button.addEventListener('click',()=>selectTab(section));button.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const index=tabs.indexOf(section),target=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;selectTab(tabs[target],{focus:true});});}
+  $('vm-review-issues').addEventListener('click',()=>{const validation=validateMatrix(state);if(validation.issues.length)reviewIssue(validation.issues[0]);});
   $('vm-clear-draft').addEventListener('click',()=>{if(busy||lookupCurrent)return;saveDraft();$('vm-clear-dialog').showModal();});
   $('vm-clear-cancel').addEventListener('click',()=>$('vm-clear-dialog').close());
   $('vm-clear-confirm').addEventListener('click',clearDraft);
   root.addEventListener('submit',async event=>{
-    event.preventDefault();if(busy||lookupCurrent)return;const validation=validateMatrix(state);if(!validation.valid){$('vm-error').textContent=validation.issues[0].message;$('vm-error').hidden=false;return;}
+    event.preventDefault();if(busy||lookupCurrent)return;const validation=validateMatrix(state);if(!validation.valid){$('vm-error').textContent=validation.issues[0].message;$('vm-error').hidden=false;reviewIssue(validation.issues[0]);return;}
     busy=true;invalidate();root.setAttribute('aria-busy','true');root.querySelectorAll('input,textarea,select,button').forEach(control=>control.disabled=true);update();
     try{
       // Capture the creation time here, rather than when the user starts filling the form.
@@ -247,8 +285,8 @@ export function initMatrixBuilder(){
     }
     draftStatus('Borrador recuperado de este navegador.');update();
   }else{
-    addRow('equipment');
+    addRow('equipment');for(const section of ['labor','volume','miscellaneous'])relabel(section);
     draftStatus(recovered.status==='invalid'?'No se pudo recuperar el borrador guardado. Puedes continuar o limpiar los datos.':recovered.status==='unavailable'?'El guardado local no está disponible en este navegador. Los datos se conservan solo mientras esta página esté abierta.':'Los cambios se guardan automáticamente en este navegador.',recovered.status!=='empty');
   }
-  lastDraftSnapshot=draftSnapshot();savingReady=true;refreshConnection();
+  selectTab(activeTab,{save:false});lastDraftSnapshot=draftSnapshot();savingReady=true;refreshConnection();
 }

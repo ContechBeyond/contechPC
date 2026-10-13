@@ -23,7 +23,7 @@ test('mano de obra y misceláneos integran costos una vez; volumetría solo desg
   a.volume={enabled:true,items:[{id:'v1',concept:'Material usado',description:'Desglose del equipo',quantity:25,unit:'m',sourceEquipment:'e1',unitsPerPack:100}]};
   const c=calculateMatrix(a);near(c.totals.direct,270);near(c.volumeDirect,25);assert.equal(c.entries.length,3);near(c.laborDirect,60);near(c.miscDirect,10);
   a.equipment[0].unitCost=200;near(calculateMatrix(a).volumeDirect,50);
-  a.labor.enabled=false;a.miscellaneous.enabled=false;near(calculateMatrix(a).totals.direct,400);
+  a.labor.enabled=false;a.miscellaneous.enabled=false;near(calculateMatrix(a).totals.direct,470);
 });
 test('ambos criterios de venta mantienen coherencia entre cantidad, unitario e importe',()=>{
   const a=input();a.equipment[0].unitCost='10.01';a.equipment[0].quantity=3;
@@ -37,7 +37,8 @@ test('valida cero, campos faltantes y enlaces de volumetría eliminados sin camb
   a.settings.exchangeRate=0;assert.equal(validateMatrix(a).valid,false);a.settings.exchangeRate=19;
   a.volume={enabled:true,items:[{id:'v1',concept:'Cable',description:'Material utilizado',quantity:1,unit:'m',sourceEquipment:'eliminado',unitsPerPack:100}]};
   assert.ok(validateMatrix(a).issues.some(issue=>issue.path.endsWith('.sourceEquipment')));
-  a.volume.enabled=false;assert.equal(validateMatrix(a).valid,true);
+  a.volume.enabled=false;assert.equal(validateMatrix(a).valid,false);
+  a.volume.items=[];assert.equal(validateMatrix(a).valid,true);
   a.project='';assert.equal(validateMatrix(a).valid,false);
 });
 test('solo el concepto es obligatorio en las partidas; los campos vacíos no inventan importes',()=>{
@@ -47,7 +48,8 @@ test('solo el concepto es obligatorio en las partidas; los campos vacíos no inv
   const c=calculateMatrix(a);assert.equal(c.entries.length,3);near(c.totals.total,0);near(c.volumeDirect,0);
   assert.ok(c.entries.every(entry=>!entry.complete&&entry.costMissing));
   assert.ok(c.entries[0].quantityMissing);assert.equal(c.entries[0].currency,'USD');
-  a.equipment[0].concept=' ';assert.equal(validateMatrix(a).valid,false);
+  a.equipment[0].concept=' ';assert.equal(validateMatrix(a).valid,true);
+  a.equipment[0].description='Equipo pendiente';assert.equal(validateMatrix(a).valid,false);
 });
 test('distingue un precio cero de uno vacío y suma únicamente cantidades y precios capturados',()=>{
   const a=input();a.equipment.push({id:'e2',concept:'Por definir',quantity:' ',unitCost:'100',currency:'MXN'});

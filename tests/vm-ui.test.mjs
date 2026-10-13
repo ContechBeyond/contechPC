@@ -51,6 +51,7 @@ async function fixture(t){
   const moduleUrl=new URL('../vm-ui.js',import.meta.url);moduleUrl.searchParams.set('test',String(++fixtureId));
   const {initMatrixBuilder}=await import(moduleUrl.href);initMatrixBuilder();
   const $=id=>win.document.getElementById(id);
+  $('vm-tab-equipment').click();
   const cards=()=>[...$('vm-equipment-list').querySelectorAll('.vm-equipment-item')];
   function fill(card,key,value){const control=card.querySelector('[data-key="'+key+'"]');control.value=value;control.dispatchEvent(new win.Event(control.tagName==='SELECT'?'change':'input',{bubbles:true}));}
   async function waitFor(check){
@@ -97,7 +98,9 @@ test('agregar equipos conserva los datos y distingue precios pendientes de captu
   await t.test('precio pendiente impide el alta y muestra aviso y resaltado, sin confirmación',async t=>{
     const ui=await fixture(t),first=ui.cards()[0];
     await ui.query(first,'pending');first.querySelector('details').open=false;
+    ui.$('vm-tab-data').click();assert.equal(ui.$('vm-equipment-section').hidden,true);
     ui.$('vm-add-equipment').click();
+    assert.equal(ui.$('vm-equipment-section').hidden,false);assert.equal(ui.$('vm-tab-equipment').getAttribute('aria-selected'),'true');
     assert.equal(ui.cards().length,1);
     assert.equal(first.querySelector('details').open,true);
     assert.equal(ui.$('vm-add-notice').hidden,false);

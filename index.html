@@ -11,11 +11,11 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="portal.css?portal=1">
-  <link rel="stylesheet" href="vm.css?vm=5">
+  <link rel="stylesheet" href="vm.css?vm=6">
   <script src="config.js"></script>
   <script src="vendor/xlsx.full.min.js" defer></script>
   <script src="vendor/jszip.min.js" defer></script>
-  <script type="module" src="portal.js?portal=7"></script>
+  <script type="module" src="portal.js?portal=8"></script>
 </head>
 <body>
   <a class="skip-link" href="#workspace">Saltar al contenido</a>
@@ -24,7 +24,19 @@
       <button id="menu-toggle" class="menu-toggle" type="button" aria-label="Abrir menú de herramientas" aria-expanded="false" aria-controls="tool-sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <a class="brand" href="#/herramientas" aria-label="Contech, inicio"><img class="brand-logo-light" src="assets/logo.jpeg" alt="Contech" width="800" height="234"><img class="brand-logo-dark" src="assets/logo-dark.png" alt="Contech" width="2170" height="725"></a>
       <div class="header-divider"></div><span class="header-name">Herramientas</span>
-      <div class="header-actions"><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"><span id="theme-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 13a9 9 0 0 1-9.8-9.8A9 9 0 1 0 20.8 13Z"/></svg></span><span id="theme-label">Modo oscuro</span></button></div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"><span id="theme-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 13a9 9 0 0 1-9.8-9.8A9 9 0 1 0 20.8 13Z"/></svg></span><span id="theme-label">Modo oscuro</span></button>
+        <div id="vm-extension-control" class="vm-extension-control" data-state="checking" hidden>
+          <button id="vm-syscom-toggle" class="vm-extension-toggle" type="button" aria-label="Extensión de SYSCOM: comprobando conexión" title="Extensión de SYSCOM" aria-expanded="false" aria-controls="vm-syscom-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M6 7h12v4a6 6 0 0 1-6 6 6 6 0 0 1-6-6V7ZM12 17v4"/></svg><span id="vm-syscom-dot" class="vm-syscom-dot" aria-hidden="true"></span></button>
+          <div id="vm-syscom-menu" class="vm-syscom-menu" role="region" aria-label="Extensión de SYSCOM" hidden>
+            <div class="vm-extension-heading"><div><span class="eyebrow">CONEXIÓN</span><h2>Extensión de SYSCOM</h2></div><button id="vm-syscom-close" class="icon-button" type="button" aria-label="Cerrar conexión de SYSCOM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+            <p id="vm-syscom-status" class="vm-lookup-message" role="status">Comprobando la conexión con la extensión…</p>
+            <p class="help">Completa los equipos desde tu sesión de SYSCOM en Chrome de escritorio. Los datos y precios quedan editables.</p>
+            <div class="vm-connector-actions"><a class="button button-secondary button-small" href="assets/contech-syscom-extension.zip" download>Descargar extensión</a><button id="vm-syscom-refresh" class="text-button" type="button">Verificar conexión</button></div>
+            <details class="vm-extension-help"><summary>Cómo instalar y conectar</summary><ol><li>Descarga el ZIP y extráelo en una carpeta que conservarás.</li><li>Abre <code>chrome://extensions</code>, activa <strong>Modo de desarrollador</strong> y pulsa <strong>Cargar descomprimida</strong>.</li><li>Selecciona la carpeta <strong>contech-syscom</strong> que contiene <code>manifest.json</code>.</li><li>Abre esta app en Chrome, pulsa el icono de la extensión y elige <strong>Conectar esta app</strong>. Autoriza el acceso a esta dirección y a SYSCOM cuando Chrome lo solicite.</li><li>Inicia sesión directamente en SYSCOM en el mismo perfil de Chrome. Regresa a la matriz y busca el modelo.</li></ol><p class="help">Una consulta a la vez y una pausa de 15 s entre búsquedas. Los bloqueos pausan las consultas; puedes revisar y reanudar desde la extensión. Estos límites no garantizan aceptación por SYSCOM.</p></details>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
   <div id="menu-backdrop" class="menu-backdrop" aria-hidden="true" hidden></div>
@@ -147,8 +159,15 @@
       <div class="page-heading"><div><span class="eyebrow">VERSIÓN MATRIZ</span><h1 id="vm-title" tabindex="-1">Crear matriz</h1><p>Captura equipos y costos para generar el libro VM en Excel.</p></div></div>
       <form id="vm-form" class="vm-workbench" novalidate>
         <div class="vm-editor">
-          <section class="panel" aria-labelledby="vm-project-title">
-            <div class="section-heading"><span class="step-number">01</span><div><h2 id="vm-project-title">Datos del proyecto</h2><p>El cliente y el proyecto darán nombre al archivo.</p></div></div>
+          <div id="vm-tabs" class="vm-tabs" role="tablist" aria-label="Hojas de la matriz">
+            <button id="vm-tab-data" class="vm-tab active" type="button" role="tab" aria-selected="true" aria-controls="vm-data-section">Datos</button>
+            <button id="vm-tab-equipment" class="vm-tab" type="button" role="tab" aria-selected="false" aria-controls="vm-equipment-section" tabindex="-1">Equipos y materiales <span id="vm-tab-equipment-count" class="vm-tab-count">0</span></button>
+            <button id="vm-tab-labor" class="vm-tab" type="button" role="tab" aria-selected="false" aria-controls="vm-labor-section" tabindex="-1">Mano de obra <span id="vm-tab-labor-count" class="vm-tab-count">0</span></button>
+            <button id="vm-tab-volume" class="vm-tab" type="button" role="tab" aria-selected="false" aria-controls="vm-volume-section" tabindex="-1">Volumetría <span id="vm-tab-volume-count" class="vm-tab-count">0</span></button>
+            <button id="vm-tab-miscellaneous" class="vm-tab" type="button" role="tab" aria-selected="false" aria-controls="vm-miscellaneous-section" tabindex="-1">Misceláneos <span id="vm-tab-miscellaneous-count" class="vm-tab-count">0</span></button>
+          </div>
+          <section id="vm-data-section" class="panel vm-tab-panel" role="tabpanel" aria-labelledby="vm-tab-data">
+            <div class="section-heading"><div><h2 id="vm-project-title">Datos del proyecto</h2><p>El cliente y el proyecto darán nombre al archivo.</p></div></div>
             <div class="fields-grid"><label class="field"><span>Cliente <span class="required">*</span></span><input id="vm-client" maxlength="90" placeholder="Ej. Tabachines" required autocomplete="off"></label><label class="field"><span>Proyecto <span class="required">*</span></span><input id="vm-project" maxlength="90" placeholder="Ej. Videoportero" required autocomplete="off"></label></div>
             <details class="vm-settings"><summary>Tipo de cambio y porcentajes</summary><div class="vm-settings-grid">
               <label class="field"><span>Tipo de cambio MXN/USD</span><input id="vm-exchange-rate" inputmode="decimal" autocomplete="off" required></label>
@@ -160,25 +179,28 @@
             </div></details>
             <p class="help">Los valores iniciales son los de tus matrices. Puedes ajustarlos para cada proyecto.</p>
           </section>
-          <section class="panel" aria-labelledby="vm-equipment-title">
-            <div class="section-heading"><span class="step-number">02</span><div><h2 id="vm-equipment-title">Equipos y materiales</h2><p>Captura el costo de compra de cada partida.</p></div></div>
-            <div class="vm-syscom-connection"><div><strong>Completar desde SYSCOM</strong><p id="vm-syscom-status" class="vm-lookup-message" role="status">Comprobando la conexión con la extensión…</p><p class="help">Usa tu sesión de SYSCOM en Chrome de escritorio. Los datos y precios quedan editables.</p></div><div class="vm-connector-actions"><a class="text-button" href="assets/contech-syscom-extension.zip" download>Descargar extensión</a><button id="vm-syscom-refresh" class="text-button" type="button">Verificar conexión</button></div><details class="vm-extension-help"><summary>Cómo instalar y conectar</summary><ol><li>Descarga el ZIP y extráelo en una carpeta que conservarás.</li><li>Abre <code>chrome://extensions</code>, activa <strong>Modo de desarrollador</strong> y pulsa <strong>Cargar descomprimida</strong>.</li><li>Selecciona la carpeta <strong>contech-syscom</strong> que contiene <code>manifest.json</code>.</li><li>Abre esta app en Chrome, pulsa el icono de la extensión y elige <strong>Conectar esta app</strong>. Autoriza el acceso a esta dirección y a SYSCOM cuando Chrome lo solicite.</li><li>Inicia sesión directamente en SYSCOM en el mismo perfil de Chrome. Regresa a la matriz y busca el modelo.</li></ol><p class="help">Una consulta a la vez y una pausa de 15 s entre búsquedas. Los bloqueos pausan las consultas; puedes revisar y reanudar desde la extensión. Estos límites no garantizan aceptación por SYSCOM.</p></details></div>
+          <section id="vm-equipment-section" class="panel vm-tab-panel" role="tabpanel" aria-labelledby="vm-tab-equipment" hidden>
+            <div class="section-heading"><div><h2 id="vm-equipment-title">Equipos y materiales</h2><p>Captura el costo de compra de cada partida.</p></div></div>
             <p class="help">Solo el concepto es obligatorio en las partidas. Los campos vacíos aparecen como «-» en Excel; sin cantidad o precio no se calcula el importe.</p>
             <div class="vm-list-actions"><button id="vm-collapse-equipment" class="text-button" type="button">Colapsar todos</button><button id="vm-expand-equipment" class="text-button" type="button">Expandir todos</button></div>
             <div id="vm-equipment-list" class="vm-item-list"></div>
             <button id="vm-add-equipment" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar equipo</button>
             <p class="help">Acepta punto o coma decimal. Captura los números sin separadores de miles. Puedes dejar vacíos los datos que no apliquen.</p>
           </section>
-          <section class="panel" aria-labelledby="vm-additional-title">
-            <div class="section-heading"><span class="step-number">03</span><div><h2 id="vm-additional-title">Costos y desgloses opcionales</h2><p>Activa las secciones que necesite el proyecto.</p></div></div>
-            <div class="vm-section-toggles">
-              <label class="vm-section-toggle"><input id="vm-enable-labor" type="checkbox" aria-controls="vm-labor-section"><span><strong>Mano de obra</strong><small>Instalación y otros servicios.</small></span></label>
-              <label class="vm-section-toggle"><input id="vm-enable-volume" type="checkbox" aria-controls="vm-volume-section"><span><strong>Volumetría</strong><small>Desglose del material utilizado.</small></span></label>
-              <label class="vm-section-toggle"><input id="vm-enable-miscellaneous" type="checkbox" aria-controls="vm-miscellaneous-section"><span><strong>Misceláneos</strong><small>Consumibles de instalación.</small></span></label>
-            </div>
-            <section id="vm-labor-section" class="vm-optional-section" aria-labelledby="vm-labor-title" hidden><h3 id="vm-labor-title">Mano de obra</h3><div id="vm-labor-list" class="vm-item-list"></div><button id="vm-add-labor" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar servicio</button></section>
-            <section id="vm-volume-section" class="vm-optional-section" aria-labelledby="vm-volume-title" hidden><h3 id="vm-volume-title">Volumetría</h3><p class="help">Desglosa materiales con precio manual o vinculados a un equipo. Se presenta en su propia hoja y no se suma nuevamente al costo del proyecto.</p><div id="vm-volume-list" class="vm-item-list"></div><button id="vm-add-volume" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar material</button></section>
-            <section id="vm-miscellaneous-section" class="vm-optional-section" aria-labelledby="vm-miscellaneous-title" hidden><h3 id="vm-miscellaneous-title">Misceláneos</h3><p class="help">Se integrarán como un solo concepto de misceláneos en Matriz y Cliente.</p><div id="vm-miscellaneous-list" class="vm-item-list"></div><button id="vm-add-miscellaneous" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar consumible</button></section>
+          <section id="vm-labor-section" class="panel vm-tab-panel" role="tabpanel" aria-labelledby="vm-tab-labor" hidden>
+            <div class="section-heading"><div><h2 id="vm-labor-title">Mano de obra</h2><p>Instalación y otros servicios del proyecto.</p></div></div>
+            <p class="help vm-section-help">Esta sección se incluye en el Excel cuando tiene datos. Solo el concepto es obligatorio; si no necesitas servicios, déjala vacía.</p>
+            <div id="vm-labor-list" class="vm-item-list"></div><button id="vm-add-labor" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar servicio</button>
+          </section>
+          <section id="vm-volume-section" class="panel vm-tab-panel" role="tabpanel" aria-labelledby="vm-tab-volume" hidden>
+            <div class="section-heading"><div><h2 id="vm-volume-title">Volumetría</h2><p>Desglosa los materiales que utilizarás.</p></div></div>
+            <p class="help vm-section-help">Vincula un equipo o captura el precio manualmente. Se incluye solo cuando tiene datos y no se suma nuevamente al costo del proyecto. Solo el concepto es obligatorio.</p>
+            <div id="vm-volume-list" class="vm-item-list"></div><button id="vm-add-volume" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar material</button>
+          </section>
+          <section id="vm-miscellaneous-section" class="panel vm-tab-panel" role="tabpanel" aria-labelledby="vm-tab-miscellaneous" hidden>
+            <div class="section-heading"><div><h2 id="vm-miscellaneous-title">Misceláneos</h2><p>Consumibles y materiales de instalación.</p></div></div>
+            <p class="help vm-section-help">Se incluye solo cuando tiene datos y se integra como un solo concepto en Matriz y Cliente. Solo el concepto es obligatorio.</p>
+            <div id="vm-miscellaneous-list" class="vm-item-list"></div><button id="vm-add-miscellaneous" class="button button-secondary vm-add" type="button"><span aria-hidden="true">+</span>Agregar consumible</button>
           </section>
         </div>
         <aside class="panel vm-summary" aria-labelledby="vm-summary-title">
@@ -187,11 +209,12 @@
           <p id="vm-folio-help" class="vm-folio-help">El folio se genera al crear el archivo, con hora, minutos, día, mes y año de Ciudad de México.</p>
           <div class="vm-summary-costs"><div class="summary-line"><span>Conceptos en Matriz</span><strong id="vm-item-count">0</strong></div><div class="summary-line"><span>Costo directo</span><strong id="vm-direct-total">—</strong></div><div class="summary-line"><span>Mano de obra</span><strong id="vm-labor-total">—</strong></div><div class="summary-line"><span>Misceláneos</span><strong id="vm-misc-total">—</strong></div><div class="summary-total"><span>Total sin IVA</span><strong id="vm-sale-total">—</strong><small>Pesos mexicanos · MXN</small></div></div>
           <p id="vm-ready-status" class="vm-ready-status" role="status"></p>
+          <button id="vm-review-issues" class="text-button vm-review-issues" type="button" hidden>Revisar datos</button>
           <div id="vm-error" class="import-error" role="alert" hidden></div>
           <button id="vm-download" class="button button-primary full-width" type="submit" disabled>Crear y descargar Excel VM</button>
           <p id="vm-success" class="vm-success" role="status" hidden></p>
           <div class="vm-draft-actions"><p id="vm-draft-status" class="vm-draft-status" role="status" aria-live="polite" aria-atomic="true">Los cambios se guardan automáticamente en este navegador.</p><button id="vm-clear-draft" class="button button-secondary full-width" type="button">Limpiar todo</button></div>
-          <p class="privacy-note">Incluye Resumen Costos, Matriz, Cliente y Mano de Obra. Volumetría y Misceláneos se agregan al activarlas. El borrador se guarda solo en este navegador. Puedes eliminarlo con «Limpiar todo».</p>
+          <p class="privacy-note">Incluye Resumen Costos, Matriz y Cliente. Mano de Obra, Volumetría y Misceláneos se agregan si tienen datos. El borrador se guarda solo en este navegador. Puedes eliminarlo con «Limpiar todo».</p>
         </aside>
       </form>
     </section>

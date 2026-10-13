@@ -5,6 +5,7 @@ const DRAFT_VERSION=1,MAX_JSON_LENGTH=2*1024*1024;
 const SECTIONS=['equipment','labor','volume','miscellaneous'];
 const NUMERIC_FIELDS=['quantity','unitCost','unitsPerPack'];
 const SETTINGS_FIELDS=['exchangeRate','indirectPct','feePct','commissionPct','provisionPct'];
+const TABS=['data',...SECTIONS];
 const own=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
 const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const invalid=message=>{throw new Error(message);};
@@ -88,7 +89,7 @@ function cleanUi(input,state){
     if(!record(settings))invalid('La presentación de un equipo del borrador no es válida.');
     equipment[id]={open:booleanField(settings,'open',true),pricePending:booleanField(settings,'pricePending',false)};
   }
-  return {equipment};
+  return {activeTab:choiceField(input,'activeTab',TABS,'data'),equipment};
 }
 function cleanDraft(input){
   if(!record(input)||input.version!==DRAFT_VERSION)invalid('La versión o estructura del borrador no es compatible.');

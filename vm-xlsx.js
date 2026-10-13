@@ -98,7 +98,7 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
   const zip=await JSZip.loadAsync(options.templateBuffer||await template()),styles=parseXml(await zip.file('xl/styles.xml').async('string')),catalog=stylesCatalog(styles),measure=textMeasurer(options.measureText);
   const workbook=parseXml(await zip.file('xl/workbook.xml').async('string')),relationships=parseXml(await zip.file('xl/_rels/workbook.xml.rels').async('string')),types=parseXml(await zip.file('[Content_Types].xml').async('string'));
   const sheets=list(workbook,'sheet').map(node=>{const relation=Array.from(relationships.documentElement.children).find(r=>r.getAttribute('Id')===node.getAttributeNS(REL,'id'));return {node,name:node.getAttribute('name'),relation,path:'xl/'+relation.getAttribute('Target')};});
-  const keep=sheets.filter(sheet=>!(sheet.name==='Volumetria'&&!input.volume?.enabled)&&!(sheet.name==='Misceláneos'&&!input.miscellaneous?.enabled));
+  const keep=sheets.filter(sheet=>!(sheet.name==='Mano de Obra'&&!calculation.labor.length)&&!(sheet.name==='Volumetria'&&!calculation.volumes.length)&&!(sheet.name==='Misceláneos'&&!calculation.misc.length));
   for(const sheet of sheets.filter(sheet=>!keep.includes(sheet))){sheet.node.remove();sheet.relation.remove();zip.remove(sheet.path);for(const type of Array.from(types.documentElement.children))if(type.getAttribute('PartName')==='/'+sheet.path)type.remove();}
   const docs=new Map();for(const sheet of keep)docs.set(sheet.name,parseXml(await zip.file(sheet.path).async('string')));
   const outputs=new Map(),entries=calculation.entries,last=entries.at(-1).row,columns=['K','L','M','N','O','P','Q','R'],keys=['direct','indirect','integrated','fee','withFee','commission','provision','total'];
@@ -132,10 +132,12 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
   for(const entry of entries){const row=client.append(entry.row),r=entry.row;client.write(row,'B',r-4,`'Matriz'!B${r}`);client.write(row,'C',entry.concept,`'Matriz'!C${r}`);client.write(row,'D',entry.description,`'Matriz'!D${r}`);client.write(row,'E',entry.quantityMissing?'-':entry.quantity,`'Matriz'!H${r}`,true);client.write(row,'F',amount(entry,'sellingUnit'),`IF(AND(ISNUMBER(E${r}),E${r}>0,ISNUMBER(G${r})),G${r}/E${r},"-")`);client.write(row,'G',amount(entry,'total'),`'Matriz'!R${r}`);client.fit(row);}
   const clientTotal=client.append(last+1,client.total);client.write(clientTotal,'B','Total sin IVA');client.write(clientTotal,'G',calculation.totals.total,`SUM(G5:G${last})`);outputs.set('Cliente',client.finish(last+1,['B2:G2',`B${last+1}:F${last+1}`]));
 
-  const labor=worksheet(docs.get('Mano de Obra'),{bodyRow:5,totalRow:7,start:'C',end:'G',minimumHeight:48},catalog,measure);
-  const laborItems=calculation.labor.length?calculation.labor:[{concept:'',quantity:'',unitCost:''}];
-  laborItems.forEach((item,i)=>{const r=5+i,row=labor.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',numberOrDash(item.quantity),undefined,true);labor.write(row,'F',numberOrDash(item.unitCost));labor.write(row,'G',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`E${r}`,`F${r}`));labor.fit(row);});
-  const laborEnd=5+laborItems.length,laborTotal=labor.append(laborEnd,labor.total);labor.write(laborTotal,'C','Total de mano de obra');labor.write(laborTotal,'G',calculation.laborDirect,`SUM(G5:G${laborEnd-1})`);outputs.set('Mano de Obra',labor.finish(laborEnd,['C2:G2',`C${laborEnd}:F${laborEnd}`]));
+  if(docs.has('Mano de Obra')){
+    const labor=worksheet(docs.get('Mano de Obra'),{bodyRow:5,totalRow:7,start:'C',end:'G',minimumHeight:48},catalog,measure);
+    const laborItems=calculation.labor;
+    laborItems.forEach((item,i)=>{const r=5+i,row=labor.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',numberOrDash(item.quantity),undefined,true);labor.write(row,'F',numberOrDash(item.unitCost));labor.write(row,'G',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`E${r}`,`F${r}`));labor.fit(row);});
+    const laborEnd=5+laborItems.length,laborTotal=labor.append(laborEnd,labor.total);labor.write(laborTotal,'C','Total de mano de obra');labor.write(laborTotal,'G',calculation.laborDirect,`SUM(G5:G${laborEnd-1})`);outputs.set('Mano de Obra',labor.finish(laborEnd,['C2:G2',`C${laborEnd}:F${laborEnd}`]));
+  }
 
   if(docs.has('Volumetria')){
     const volume=worksheet(docs.get('Volumetria'),{bodyRow:5,totalRow:6,start:'B',end:'G'},catalog,measure);

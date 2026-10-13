@@ -6,7 +6,15 @@ export const vmNumber=value=>{const text=decimalString(value,'quantity');return 
 const text=value=>String(value??'').replace(/\r\n?/g,'\n').trim();
 export const vmIsBlank=value=>!text(value);
 const optionalNumber=value=>vmIsBlank(value)?0:vmNumber(value);
-const active=section=>section?.enabled?section.items||[]:[];
+export function vmItemHasData(section,item){
+  if(!item||typeof item!=='object')return false;
+  const fields=['concept','description','quantity','unitCost'];
+  if(section==='equipment')fields.push('model','brand','supplier');
+  if(section==='volume')fields.push('sourceEquipment','unitsPerPack');
+  return fields.some(key=>!vmIsBlank(item[key]))||(section==='volume'&&!vmIsBlank(item.unit)&&text(item.unit)!=='m');
+}
+export const vmSectionItems=(section,items)=>Array.isArray(items)?items.filter(item=>vmItemHasData(section,item)):[];
+const active=(name,section)=>vmSectionItems(name,section?.items);
 export const miscellaneousText=item=>[text(item.concept),text(item.description)||'-'].join('\n');
 
 export function matrixFolio(when=new Date()){
@@ -31,25 +39,24 @@ export function validateMatrix(data){
   number(settings.exchangeRate,'settings.exchangeRate','Tipo de cambio',true,10000);
   for(const [key,label] of [['indirectPct','Indirectos'],['feePct','Fee'],['commissionPct','Comisión'],['provisionPct','Aprovisionamiento']])number(settings[key],'settings.'+key,label,false,1000);
   if(!['precision','unit-rounded'].includes(settings.rounding))add('settings.rounding','Selecciona el criterio de redondeo.');
-  const equipment=data.equipment||[],labor=active(data.labor),misc=active(data.miscellaneous),volume=active(data.volume);
+  const equipment=vmSectionItems('equipment',data.equipment),labor=active('labor',data.labor),misc=active('miscellaneous',data.miscellaneous),volume=active('volume',data.volume);
   if(!equipment.length&&!labor.length&&!misc.length)add('equipment','Agrega al menos un equipo o una partida de mano de obra o misceláneos.');
   if(equipment.length+labor.length+(misc.length?1:0)>VM_MAX_ITEMS)add('equipment',`La Matriz y Cliente admiten hasta ${VM_MAX_ITEMS} conceptos.`);
   for(const [name,items,label] of [['equipment',equipment,'Equipo'],['labor',labor,'Mano de obra'],['miscellaneous',misc,'Misceláneo'],['volume',volume,'Volumetría']]){
-    if(name!=='equipment'&&data[name]?.enabled&&!items.length)add(name,`Agrega una partida de ${label.toLowerCase()} o desactiva la sección.`);
     if(items.length>VM_MAX_ITEMS)add(name,`La sección admite hasta ${VM_MAX_ITEMS} partidas.`);
     const ids=new Set();
-    items.forEach((item,i)=>{
-      const prefix=name+'.'+i,labelRow=`${label} ${i+1}`;
+    items.forEach(item=>{
+      const source=name==='equipment'?data.equipment:data[name]?.items,sourceIndex=source.indexOf(item),prefix=name+'.'+sourceIndex,labelRow=`${label} ${sourceIndex+1}`;
       if(!item.id||ids.has(item.id))add(prefix+'.id',`${labelRow}: el identificador de la partida no es válido.`);ids.add(item.id);
       requiredText(item.concept,prefix+'.concept',`el concepto de ${labelRow.toLowerCase()}`,180);
       optionalText(item.description,prefix+'.description',`La descripción de ${labelRow.toLowerCase()}`,name==='miscellaneous'?600:1200);
       optional(item.quantity,prefix+'.quantity',`${labelRow}, cantidad`,true,1000000);
       if(name==='equipment'){
-        for(const [key,field] of [['model','Modelo'],['brand','Marca'],['supplier','Proveedor']])optionalText(item[key],prefix+'.'+key,`${field} del equipo ${i+1}`,100);
+        for(const [key,field] of [['model','Modelo'],['brand','Marca'],['supplier','Proveedor']])optionalText(item[key],prefix+'.'+key,`${field} del equipo ${sourceIndex+1}`,100);
         if(!vmIsBlank(item.currency)&&!['USD','MXN'].includes(item.currency))add(prefix+'.currency',`${labelRow}: selecciona USD o MXN.`);
       }
       if(name==='volume'){
-        optionalText(item.unit,prefix+'.unit',`La unidad de volumetría ${i+1}`,20);
+        optionalText(item.unit,prefix+'.unit',`La unidad de volumetría ${sourceIndex+1}`,20);
         if(item.sourceEquipment){
           if(!equipment.some(e=>e.id===item.sourceEquipment))add(prefix+'.sourceEquipment',`${labelRow}: el equipo vinculado ya no existe. Elige otro equipo o usa precio manual.`);
           optional(item.unitsPerPack,prefix+'.unitsPerPack',`${labelRow}, unidades por presentación`,true,1000000);
@@ -69,7 +76,7 @@ export function calculateMatrix(data){
   if(!validation.valid)throw new Error(validation.issues[0].message);
   const s=Object.fromEntries(Object.entries(data.settings).map(([key,value])=>[key,key==='rounding'?value:vmNumber(value)]));
   const rates={indirect:s.indirectPct/100,fee:s.feePct/100,commission:s.commissionPct/100,provision:s.provisionPct/100};
-  const labor=active(data.labor),misc=active(data.miscellaneous),volume=active(data.volume),entries=[];
+  const labor=active('labor',data.labor),misc=active('miscellaneous',data.miscellaneous),volume=active('volume',data.volume),entries=[];
   function append(item,kind,sourceIndex,mxnCost,costMissing=vmIsBlank(item.unitCost)){
     const quantityMissing=vmIsBlank(item.quantity),quantity=optionalNumber(item.quantity),complete=!quantityMissing&&!costMissing,direct=quantity*mxnCost,indirect=direct*rates.indirect,integrated=direct+indirect,fee=integrated*rates.fee,withFee=integrated+fee,commission=withFee*rates.commission,provision=withFee*rates.provision;
     const total=s.rounding==='unit-rounded'?quantity*roundUnit(mxnCost*(1+rates.indirect)*(1+rates.fee)*(1+rates.commission+rates.provision)):withFee+commission+provision;
@@ -77,7 +84,7 @@ export function calculateMatrix(data){
     if(!Object.values(entry).filter(value=>typeof value==='number').every(Number.isFinite))throw new Error('Los importes calculados exceden los valores admitidos. Revisa cantidades, precios y porcentajes.');
     entries.push(entry);return entry;
   }
-  (data.equipment||[]).forEach((item,i)=>{const currency=text(item.currency)||'USD';append({...item,currency},'equipment',i,optionalNumber(item.unitCost)*(currency==='USD'?s.exchangeRate:1));});
+  vmSectionItems('equipment',data.equipment).forEach((item,i)=>{const currency=text(item.currency)||'USD';append({...item,currency},'equipment',i,optionalNumber(item.unitCost)*(currency==='USD'?s.exchangeRate:1));});
   labor.forEach((item,i)=>append(item,'labor',i,optionalNumber(item.unitCost)));
   const miscDirect=misc.reduce((sum,item)=>sum+optionalNumber(item.quantity)*optionalNumber(item.unitCost),0),miscComplete=misc.some(item=>!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost));
   if(misc.length)append({id:'miscellaneous-total',concept:'Misceláneos',description:misc.map(miscellaneousText).join('\n'),quantity:1},'miscellaneous',0,miscDirect,!miscComplete);

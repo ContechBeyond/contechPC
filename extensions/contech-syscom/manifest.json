@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Contech · Consulta SYSCOM",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Consulta un modelo en SYSCOM y lleva sus datos visibles a Crear matriz de Contech.",
   "minimum_chrome_version": "120",
   "permissions": ["activeTab", "scripting", "storage"],

@@ -16,7 +16,9 @@ La extensión usa una pestaña propia de SYSCOM para las consultas, aprovechando
 
 ## Datos y precios
 
-Completa modelo, concepto, descripción, marca y proveedor. La cantidad se conserva. El precio solo se completa automáticamente cuando hay una opción clara con moneda identificada y sin IVA. Si aparecen varios precios o falta el dato de IVA, muestra opciones para revisión; un precio identificado con IVA no se puede aplicar. Si falta la moneda, el precio o la sesión, deja el costo pendiente para captura manual. Siempre puedes editar los campos.
+Completa modelo, concepto, descripción, marca y proveedor. La cantidad se conserva. Selecciona el **precio principal de compra** de la tarjeta, con moneda identificada y sin IVA; interpreta **«+ IVA»** como un importe al que todavía se agregará el impuesto, y captura ese importe sin sumarle IVA. Descarta los precios de lista, «Precio especial», «Desde», mayoreo, ahorros, devoluciones promocionales, envíos y pagos mensuales. La selección usa las etiquetas y la jerarquía visual, sin elegir simplemente el precio mayor o menor.
+
+Si el principal no es inequívoco o no indica el IVA, deja opciones para revisión. Un precio identificado con IVA no se puede aplicar. Si falta la moneda, el precio o la sesión, deja el costo pendiente para captura manual. Siempre puedes editar los campos.
 
 Se lee el contenido renderizado de la ficha. No se consultan endpoints privados, no se extraen cookies, no se hacen pedidos y no se guardan contraseñas ni precios. Chrome conserva los sitios que conectaste, las marcas de tiempo de las consultas de la última hora y el estado de pausa. La selección temporal de modelos desaparece al cerrar Chrome; no es un historial de propuestas.
 

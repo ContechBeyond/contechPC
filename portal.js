@@ -1,4 +1,4 @@
-import {TOOLS} from './tools.js?portal=5';
+import {TOOLS} from './tools.js?portal=7';
 
 export function initPortal({tools=TOOLS,document:doc=globalThis.document,window:win=globalThis.window}={}){
   const $=id=>doc.getElementById(id),homeSlug='herramientas';

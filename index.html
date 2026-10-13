@@ -11,11 +11,11 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="portal.css?portal=1">
-  <link rel="stylesheet" href="vm.css?vm=3">
+  <link rel="stylesheet" href="vm.css?vm=5">
   <script src="config.js"></script>
   <script src="vendor/xlsx.full.min.js" defer></script>
   <script src="vendor/jszip.min.js" defer></script>
-  <script type="module" src="portal.js?portal=5"></script>
+  <script type="module" src="portal.js?portal=7"></script>
 </head>
 <body>
   <a class="skip-link" href="#workspace">Saltar al contenido</a>
@@ -190,15 +190,18 @@
           <div id="vm-error" class="import-error" role="alert" hidden></div>
           <button id="vm-download" class="button button-primary full-width" type="submit" disabled>Crear y descargar Excel VM</button>
           <p id="vm-success" class="vm-success" role="status" hidden></p>
-          <p class="privacy-note">Incluye Resumen Costos, Matriz, Cliente y Mano de Obra. Volumetría y Misceláneos se agregan al activarlas. Los datos se mantienen durante esta sesión.</p>
+          <div class="vm-draft-actions"><p id="vm-draft-status" class="vm-draft-status" role="status" aria-live="polite" aria-atomic="true">Los cambios se guardan automáticamente en este navegador.</p><button id="vm-clear-draft" class="button button-secondary full-width" type="button">Limpiar todo</button></div>
+          <p class="privacy-note">Incluye Resumen Costos, Matriz, Cliente y Mano de Obra. Volumetría y Misceláneos se agregan al activarlas. El borrador se guarda solo en este navegador. Puedes eliminarlo con «Limpiar todo».</p>
         </aside>
       </form>
     </section>
     <footer class="footer"><span>Contech Secure Solutions</span><span>Herramientas para tu equipo</span></footer>
   </main>
   </div>
+  <dialog id="vm-clear-dialog" class="vm-clear-dialog" aria-labelledby="vm-clear-title" aria-describedby="vm-clear-help"><div class="dialog-heading"><h2 id="vm-clear-title">¿Limpiar toda la matriz?</h2></div><p id="vm-clear-help">Se eliminarán los datos de la matriz y el borrador guardado en este navegador. Esta acción no se puede deshacer.</p><div class="dialog-actions"><button id="vm-clear-cancel" class="button button-secondary" type="button" autofocus>Cancelar</button><button id="vm-clear-confirm" class="button button-primary" type="button">Sí, limpiar todo</button></div></dialog>
   <dialog id="mapping-dialog" class="mapping-dialog"><form method="dialog"><div class="dialog-heading"><h2>Identifica las columnas</h2><button class="icon-button" value="cancel" aria-label="Cerrar" type="submit"><span data-icon="close"></span></button></div><p id="mapping-help">Relaciona las columnas del archivo con los datos de la propuesta.</p><div class="fields-grid"><label id="mapping-table-label" class="field" hidden><span>Tabla detectada</span><select id="mapping-table"></select></label><label class="field"><span>Fila de encabezados</span><input id="mapping-header" type="number" min="1" step="1"></label></div><div id="mapping-fields" class="fields-grid"></div><p id="mapping-error" class="import-error" role="alert" hidden></p><div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancelar</button><button id="apply-mapping" class="button button-primary" type="button">Importar conceptos</button></div></form></dialog>
   <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><div><h2>Vista previa</h2><p id="preview-dialog-name"></p></div><button id="close-preview" class="icon-button" type="button" aria-label="Cerrar vista previa"><span data-icon="close"></span></button></div><div class="preview-toolbar"><button id="preview-previous" class="button button-quiet button-small" type="button" disabled>Anterior</button><span id="preview-page" aria-live="polite"></span><button id="preview-next" class="button button-quiet button-small" type="button" disabled>Siguiente</button><button id="preview-zoom" class="button button-quiet button-small" type="button">Ampliar</button></div><div id="pdf-preview" aria-label="Vista previa del documento"><p id="preview-message" role="status">Cargando vista previa…</p><canvas id="preview-canvas" aria-label="Página del documento" hidden></canvas></div><div class="dialog-actions"><button id="preview-download" class="button button-primary" type="button"><span data-icon="download"></span>Descargar PDF</button></div></dialog>
   <script>if(location.protocol==='file:'){document.getElementById('tool-load-message').textContent='Para usar la app, ábrela desde el enlace de alojamiento o el servidor local indicado en la guía.';document.getElementById('tool-load-notice').hidden=false;}</script>
+  <div id="vm-add-notice" class="vm-add-notice" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 </body>
 </html>

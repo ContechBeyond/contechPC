@@ -1,5 +1,5 @@
 import {COLUMN_FIELDS,headerColumns,identifyHeaders,rankSheets,normalize,importMatrix,validateRows,money,cents,multipliedCents,editableMoney,todayMexico,lastDayOfMonth,coverDate,sheetReference,suggestedFolio} from './core.js';
-import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js?format=3';
+import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js?format=4';
 import {openPdfPreview,clearPreview} from './preview.js';
 import {initFinalVersion} from './vf-ui.js?portal=3';
 import {exportTitle} from './vf-core.js';

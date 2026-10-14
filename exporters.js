@@ -123,7 +123,7 @@ export async function buildPdfBlob(data) {
     if(max*lineHeight>580)throw new Error(`El concepto ${index+1} ocupa más de una página. Divide o acorta su descripción para generar el PDF con la fila completa.`);
     body.push(values.map((text,i)=>({text,fillColor:'#D9EAD3',alignment:i>=4?'right':'center',margin:[0,Math.max(0,(max-lines[i])*lineHeight/2),0,Math.max(0,(max-lines[i])*lineHeight/2)]})));
   }
-  body.push([{text:'Total sin IVA',colSpan:5,bold:true,color:'white',fillColor:'#434343',alignment:'right',margin:[0,5,0,5]},{},{},{},{},{text:money(data.total),bold:true,color:'white',fillColor:'#434343',alignment:'right',margin:[0,5,0,5]}]);
+  body.push([{text:'Total sin IVA',colSpan:5,bold:true,color:'white',fillColor:'#434343',alignment:'right',margin:[0,0,0,0]},{},{},{},{},{text:money(data.total),bold:true,color:'white',fillColor:'#434343',alignment:'right',margin:[0,0,0,0]}]);
   const technical=conditionLines(data.technical).map(text=>({text,fontSize:9,lineHeight:1.07,alignment:'justify',margin:[0,0,0,1]}));
   const commercial=conditionLines(data.commercial).map(text=>({text,fontSize:9,lineHeight:1.07,alignment:'justify',margin:[0,0,0,1]}));
   const dd={

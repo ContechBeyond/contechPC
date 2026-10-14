@@ -10,7 +10,7 @@ export const TOOLS=[
     description:'Captura equipos y costos del proyecto para generar una matriz de Excel con fórmulas y formato Contech.',
     badge:'VM',formats:['Excel'],
     icon:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 13h8M12 9v8"/>',
-    load:()=>import('./vm-ui.js?vm=6').then(module=>module.initMatrixBuilder())
+    load:()=>import('./vm-ui.js?vm=7').then(module=>module.initMatrixBuilder())
   },
   {
     id:'proposal',slug:'propuesta-comercial',viewId:'proposal-view',headingId:'proposal-title',

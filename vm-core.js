@@ -8,14 +8,34 @@ export const vmIsBlank=value=>!text(value);
 const optionalNumber=value=>vmIsBlank(value)?0:vmNumber(value);
 export function vmItemHasData(section,item){
   if(!item||typeof item!=='object')return false;
+  if(section==='equipment'&&item.cableEnabled)return true;
   const fields=['concept','description','quantity','unitCost'];
   if(section==='equipment')fields.push('model','brand','supplier');
+  if(section==='labor')fields.push('cableEquipment');
   if(section==='volume')fields.push('sourceEquipment','unitsPerPack');
   return fields.some(key=>!vmIsBlank(item[key]))||(section==='volume'&&!vmIsBlank(item.unit)&&text(item.unit)!=='m');
 }
 export const vmSectionItems=(section,items)=>Array.isArray(items)?items.filter(item=>vmItemHasData(section,item)):[];
 const active=(name,section)=>vmSectionItems(name,section?.items);
 export const miscellaneousText=item=>[text(item.concept),text(item.description)||'-'].join('\n');
+
+// Keep reel inputs intact; only the charged quantity/cost are derived.
+export function cableAmounts(item){
+  const meters=vmNumber(item.cableMeters),capacity=vmNumber(item.metersPerReel),price=vmNumber(item.unitCost);
+  const suggested=meters>0&&capacity>0?Math.ceil(meters/capacity):NaN;
+  const reels=vmIsBlank(item.cableReels)?suggested:vmNumber(item.cableReels),perMeter=item.cableMode!=='reel';
+  return {meters,capacity,suggested,reels,perMeter,quantity:perMeter?meters:reels,unitCost:perMeter?price/capacity:price};
+}
+export function cableLaborItem(item,equipment){
+  const source=equipment.find(row=>row.id===item.cableEquipment&&row.cableEnabled);
+  return source?{...item,quantity:source.cableMeters}:item;
+}
+export function suggestCableCapacity(description){
+  // Only explicit reel/box/package lengths; never infer from a model number or feet.
+  const matches=[...String(description||'').matchAll(/(?:bobina|caja|rollo)\s+(?:de\s+)?(?:cable\s+(?:de\s+)?)?(\d+(?:[.,]\d+)?)\s*(?:metros?\b|m\b)/gi)];
+  const values=[...new Set(matches.map(match=>match[1].replace(',','.')))];
+  return values.length===1?values[0]:'';
+}
 
 export function matrixFolio(when=new Date()){
   if(!(when instanceof Date)||!Number.isFinite(when.getTime()))throw new Error('La fecha de creación no es válida.');
@@ -50,10 +70,25 @@ export function validateMatrix(data){
       if(!item.id||ids.has(item.id))add(prefix+'.id',`${labelRow}: el identificador de la partida no es válido.`);ids.add(item.id);
       requiredText(item.concept,prefix+'.concept',`el concepto de ${labelRow.toLowerCase()}`,180);
       optionalText(item.description,prefix+'.description',`La descripción de ${labelRow.toLowerCase()}`,name==='miscellaneous'?600:1200);
-      optional(item.quantity,prefix+'.quantity',`${labelRow}, cantidad`,true,1000000);
+      if(!(name==='equipment'&&item.cableEnabled)&&!(name==='labor'&&item.cableEquipment))optional(item.quantity,prefix+'.quantity',`${labelRow}, cantidad`,true,1000000);
       if(name==='equipment'){
         for(const [key,field] of [['model','Modelo'],['brand','Marca'],['supplier','Proveedor']])optionalText(item[key],prefix+'.'+key,`${field} del equipo ${sourceIndex+1}`,100);
         if(!vmIsBlank(item.currency)&&!['USD','MXN'].includes(item.currency))add(prefix+'.currency',`${labelRow}: selecciona USD o MXN.`);
+        if(item.cableEnabled){
+          number(item.metersPerReel,prefix+'.metersPerReel',`${labelRow}, metros por bobina`,true,1000000);
+          number(item.cableMeters,prefix+'.cableMeters',`${labelRow}, metros a instalar`,true,1000000);
+          if(!['meter','reel'].includes(item.cableMode))add(prefix+'.cableMode',`${labelRow}: selecciona la forma de cobro del cable.`);
+          if(item.cableMode==='reel'&&!vmIsBlank(item.cableReels)){
+            number(item.cableReels,prefix+'.cableReels',`${labelRow}, bobinas a cobrar`,true,1000000);
+            if(Number.isFinite(vmNumber(item.cableReels))&&!Number.isInteger(vmNumber(item.cableReels)))add(prefix+'.cableReels',`${labelRow}: indica un número entero de bobinas.`);
+          }
+          const cable=cableAmounts(item);
+          if(Number.isFinite(cable.quantity)&&cable.quantity>1000000)add(prefix+'.cableReels',`${labelRow}: la cantidad de cobro supera 1.000.000.`);
+        }
+      }
+      if(name==='labor'&&item.cableEquipment){
+        if(!equipment.some(row=>row.id===item.cableEquipment&&row.cableEnabled))add(prefix+'.cableEquipment',`${labelRow}: el cable vinculado ya no existe.`);
+        if(labor.filter(row=>row.cableEquipment===item.cableEquipment).length>1)add(prefix+'.cableEquipment',`${labelRow}: la instalación de este cable está duplicada.`);
       }
       if(name==='volume'){
         optionalText(item.unit,prefix+'.unit',`La unidad de volumetría ${sourceIndex+1}`,20);
@@ -76,7 +111,7 @@ export function calculateMatrix(data){
   if(!validation.valid)throw new Error(validation.issues[0].message);
   const s=Object.fromEntries(Object.entries(data.settings).map(([key,value])=>[key,key==='rounding'?value:vmNumber(value)]));
   const rates={indirect:s.indirectPct/100,fee:s.feePct/100,commission:s.commissionPct/100,provision:s.provisionPct/100};
-  const labor=active('labor',data.labor),misc=active('miscellaneous',data.miscellaneous),volume=active('volume',data.volume),entries=[];
+  const labor=active('labor',data.labor).map(item=>cableLaborItem(item,data.equipment)),misc=active('miscellaneous',data.miscellaneous),volume=active('volume',data.volume),entries=[];
   function append(item,kind,sourceIndex,mxnCost,costMissing=vmIsBlank(item.unitCost)){
     const quantityMissing=vmIsBlank(item.quantity),quantity=optionalNumber(item.quantity),complete=!quantityMissing&&!costMissing,direct=quantity*mxnCost,indirect=direct*rates.indirect,integrated=direct+indirect,fee=integrated*rates.fee,withFee=integrated+fee,commission=withFee*rates.commission,provision=withFee*rates.provision;
     const total=s.rounding==='unit-rounded'?quantity*roundUnit(mxnCost*(1+rates.indirect)*(1+rates.fee)*(1+rates.commission+rates.provision)):withFee+commission+provision;
@@ -84,7 +119,11 @@ export function calculateMatrix(data){
     if(!Object.values(entry).filter(value=>typeof value==='number').every(Number.isFinite))throw new Error('Los importes calculados exceden los valores admitidos. Revisa cantidades, precios y porcentajes.');
     entries.push(entry);return entry;
   }
-  vmSectionItems('equipment',data.equipment).forEach((item,i)=>{const currency=text(item.currency)||'USD';append({...item,currency},'equipment',i,optionalNumber(item.unitCost)*(currency==='USD'?s.exchangeRate:1));});
+  vmSectionItems('equipment',data.equipment).forEach((item,i)=>{
+    const currency=text(item.currency)||'USD',cable=item.cableEnabled?cableAmounts(item):null,costMissing=vmIsBlank(item.unitCost);
+    const charged=cable?{...item,quantity:cable.quantity,unitCost:costMissing?'':cable.unitCost,description:[text(item.description),cable.perMeter?'Suministro de cable por metro.':`Suministro de bobina completa de ${cable.capacity} m.`].filter(Boolean).join('\n'),reelPrice:optionalNumber(item.unitCost)}:item;
+    append({...charged,currency},'equipment',i,optionalNumber(charged.unitCost)*(currency==='USD'?s.exchangeRate:1),costMissing);
+  });
   labor.forEach((item,i)=>append(item,'labor',i,optionalNumber(item.unitCost)));
   const miscDirect=misc.reduce((sum,item)=>sum+optionalNumber(item.quantity)*optionalNumber(item.unitCost),0),miscComplete=misc.some(item=>!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost));
   if(misc.length)append({id:'miscellaneous-total',concept:'Misceláneos',description:misc.map(miscellaneousText).join('\n'),quantity:1},'miscellaneous',0,miscDirect,!miscComplete);
@@ -93,8 +132,9 @@ export function calculateMatrix(data){
   const volumes=volume.map(item=>{
     const source=entries.find(entry=>entry.id===item.sourceEquipment&&entry.kind==='equipment');
     const quantityMissing=vmIsBlank(item.quantity),costMissing=source?source.costMissing||vmIsBlank(item.unitsPerPack):vmIsBlank(item.unitCost);
-    const unitCost=costMissing?0:source?source.mxnCost/vmNumber(item.unitsPerPack):vmNumber(item.unitCost),quantity=optionalNumber(item.quantity);
-    return {...item,quantity,quantityMissing,costMissing,complete:!quantityMissing&&!costMissing,unitCost,direct:quantity*unitCost,sourceRow:source?.row};
+    const sourceMultiplier=source?.cableEnabled&&source.cableMode==='meter'?vmNumber(source.metersPerReel):1;
+    const unitCost=costMissing?0:source?source.mxnCost*sourceMultiplier/vmNumber(item.unitsPerPack):vmNumber(item.unitCost),quantity=optionalNumber(item.quantity);
+    return {...item,quantity,quantityMissing,costMissing,complete:!quantityMissing&&!costMissing,unitCost,direct:quantity*unitCost,sourceRow:source?.row,sourceMultiplier};
   });
   return {entries,totals,totalRow,rates,settings:s,labor,misc,miscDirect,miscComplete,volumes,volumeDirect:volumes.reduce((sum,item)=>sum+item.direct,0),laborDirect:labor.reduce((sum,item)=>sum+optionalNumber(item.quantity)*optionalNumber(item.unitCost),0)};
 }

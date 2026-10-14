@@ -55,6 +55,15 @@ function cleanItem(input,section,ids){
   item.sourceEquipment=stringField(input,'sourceEquipment',40);
   // A deleted equipment link is preserved so the user can repair it after reload.
   if(item.sourceEquipment)itemId(item.sourceEquipment,'equipment');
+  if(section==='equipment'&&own(input,'cableEnabled')){
+    item.cableEnabled=booleanField(input,'cableEnabled',false);
+    item.cableMode=choiceField(input,'cableMode',['meter','reel'],'meter');
+    for(const key of ['metersPerReel','cableMeters','cableReels'])item[key]=numericField(input,key,30);
+  }
+  if(section==='labor'&&own(input,'cableEquipment')){
+    item.cableEquipment=stringField(input,'cableEquipment',40);
+    if(item.cableEquipment)itemId(item.cableEquipment,'equipment');
+  }
   return item;
 }
 function cleanItems(input,section,ids){

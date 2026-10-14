@@ -10,6 +10,30 @@ const bridge=await readFile(new URL('../extensions/contech-syscom/app-bridge.js'
 const settingsFields={exchangeRate:'vm-exchange-rate',indirectPct:'vm-indirect-pct',feePct:'vm-fee-pct',commissionPct:'vm-commission-pct',provisionPct:'vm-provision-pct',rounding:'vm-rounding'};
 let fixtureId=0;
 
+test('cableado guarda modos y tarifa editable, sincroniza metros y elimina solo su instalación',async t=>{
+  let ui=await fixture(t);ui.input(ui.$('vm-client'),'Tabachines');ui.input(ui.$('vm-project'),'Cableado');ui.$('vm-tab-equipment').click();
+  let card=ui.cards()[0];ui.fill(card,'concept','Cable Cat6');ui.fill(card,'description','Bobina de Cable de 305 Metros');ui.fill(card,'unitCost','3050');ui.fill(card,'currency','MXN');
+  card.querySelector('[data-key="cableEnabled"]').click();
+  assert.equal(card.querySelector('[data-key="metersPerReel"]').value,'305');
+  ui.fill(card,'cableMeters','75');assert.equal(ui.$('vm-download').disabled,false);
+  assert.match(card.querySelector('.vm-item-total').textContent,/750/);
+  card.querySelector('.vm-cable-installation button').click();assert.equal(ui.cards('labor').length,1);
+  assert.equal(ui.cards('labor')[0].querySelector('[data-key="unitCost"]').value,'25');
+  ui.fill(card,'cableInstallationRate','28.123456789');ui.fill(card,'cableMeters','80');
+  assert.equal(ui.cards('labor')[0].querySelector('[data-key="quantity"]').value,'80');assert.equal(ui.cards('labor')[0].querySelector('[data-key="quantity"]').readOnly,true);
+  card.querySelector('.vm-cable-installation button').click();assert.equal(ui.cards('labor').length,1);assert.equal(ui.$('vm-tab-labor').getAttribute('aria-selected'),'true');
+  ui.fill(ui.cards('labor')[0],'unitCost','30.123456789');assert.equal(card.querySelector('[data-key="cableInstallationRate"]').value,'30.123456789');
+  ui.$('vm-tab-equipment').click();ui.fill(card,'cableMode','reel');ui.fill(card,'cableReels','2');
+  const stored=ui.snapshot();ui.close();ui=await fixture(t,{stored});card=ui.cards()[0];
+  assert.equal(card.querySelector('[data-key="cableEnabled"]').checked,true);
+  assert.equal(card.querySelector('[data-key="cableReels"]').value,'2');assert.equal(card.querySelector('[data-key="cableInstallationRate"]').value,'30.123456789');
+  assert.equal(ui.cards('labor').length,1);assert.equal(ui.cards('labor')[0].querySelector('[data-key="quantity"]').value,'80');
+  ui.$('vm-add-labor').click();ui.fill(ui.cards('labor')[1],'concept','Servicio independiente');
+  card.querySelector('[data-key="cableEnabled"]').click();assert.equal(ui.cards('labor').length,1);assert.equal(ui.cards('labor')[0].querySelector('[data-key="concept"]').value,'Servicio independiente');
+  card.querySelector('[data-key="cableEnabled"]').click();card.querySelector('.vm-cable-installation button').click();assert.equal(ui.cards('labor').length,2);
+  card.querySelector('.icon-button').click();assert.equal(ui.cards('labor').length,1);
+});
+
 async function fixture(t,{stored={},writeDenied=false,removeDenied=false,accessDenied=false}={}){
   const dom=new JSDOM(html,{url:'https://contech-test.onrender.com/',runScripts:'outside-only'}),win=dom.window;
   const storage=win.localStorage;

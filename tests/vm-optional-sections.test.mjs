@@ -77,6 +77,27 @@ test('el Excel incluye solo hojas con datos y mantiene referencias, precisión, 
   t.after(()=>{dom.window.close();Object.assign(globalThis,previous);});
   const options={templateBuffer,measureText:value=>String(value).length*6},when=new Date('2026-10-13T19:52:00Z');
 
+  await t.test('cable por metro y bobina conserva cálculos y referencias de Cliente e instalación',async()=>{
+    const data=input(),cable=data.equipment[0];Object.assign(cable,{cableEnabled:true,cableMode:'meter',metersPerReel:'305',cableMeters:'75.125',cableReels:'',unitCost:'3050.123456789',currency:'MXN'});
+    data.labor.items=[{...blank('labor-2'),concept:'Instalación de cableado',quantity:'999',unitCost:'25',cableEquipment:cable.id}];
+    data.volume.items=[{...blank('volume-3'),concept:'Desglose',quantity:'75.125',sourceEquipment:cable.id,unitsPerPack:'305'}];
+    let result=await buildMatrixWorkbook(data,when,options),book=await inspectWorkbook(result);
+    assert.equal(book.formula('Matriz','J5'),'3050.123456789/305');near(book.value('Matriz','J5'),3050.123456789/305);
+    assert.equal(book.formula('Mano de Obra','E5'),"'Matriz'!H5");near(book.value('Mano de Obra','G5'),75.125*25);
+    near(book.value('Cliente','E5'),75.125);assert.equal(book.formula('Cliente','E5'),"'Matriz'!H5");
+    near(book.value('Volumetria','F5'),3050.123456789/305);assert.match(book.formula('Volumetria','F5'),/\*305\/305/);
+    near(book.value('Resumen Costos','K6'),result.calculation.totals.total);
+    let vf=await convertMatrix(book.bytes,result.name);near(vf.workbook.Sheets.Matriz.R10.v,result.calculation.totals.total);
+    cable.cableMode='reel';cable.cableMeters='400';result=await buildMatrixWorkbook(data,when,options);book=await inspectWorkbook(result);
+    assert.equal(book.formula('Matriz','H5'),'ROUNDUP(400/305,0)');near(book.value('Cliente','E5'),2);
+    near(book.value('Mano de Obra','E5'),400);assert.equal(book.formula('Mano de Obra','E5'),undefined);
+    near(result.calculation.totals.direct,2*3050.123456789+400*25);
+    vf=await convertMatrix(book.bytes,result.name);near(vf.workbook.Sheets.Matriz.R10.v,result.calculation.totals.total);
+    cable.cableMode='meter';cable.currency='USD';result=await buildMatrixWorkbook(data,when,options);book=await inspectWorkbook(result);
+    assert.equal(book.formula('Matriz','I5'),'3050.123456789/305');assert.equal(book.formula('Matriz','J5'),'IF(ISNUMBER(I5),I5*$J$3,"-")');
+    near(book.value('Matriz','J5'),3050.123456789/305*19);
+  });
+
   await t.test('venta de equipo no produce hojas opcionales vacías y se convierte a VF de dos hojas',async()=>{
     const data=input();for(const section of ['labor','volume','miscellaneous'])data[section]={enabled:true,items:[blank(section+'-2')]};
     const sourceSnapshot=JSON.stringify(data),result=await buildMatrixWorkbook(data,when,options),book=await inspectWorkbook(result);

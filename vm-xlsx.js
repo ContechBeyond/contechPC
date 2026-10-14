@@ -107,13 +107,15 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
   for(const [col,value,source] of [['L',calculation.rates.indirect,'E'],['N',calculation.rates.fee,'G'],['P',calculation.rates.commission,'I'],['Q',calculation.rates.provision,'J']]){const row=Array.from(docs.get('Matriz').getElementsByTagNameNS(MAIN,'row')).find(r=>r.getAttribute('r')==='3');mat.write(row,col,value,`'Resumen Costos'!${source}4`);}
   for(const entry of entries){
     const r=entry.row,row=mat.append(r),labor=entry.kind==='labor',misc=entry.kind==='miscellaneous',sourceRow=5+entry.sourceIndex;
+    const cablePrice=entry.cableEnabled&&entry.cableMode==='meter'&&!entry.costMissing?`${entry.reelPrice}/${vmNumber(entry.metersPerReel)}`:undefined;
+    const cableQuantity=entry.cableEnabled&&entry.cableMode==='reel'&&vmIsBlank(entry.cableReels)?`ROUNDUP(${vmNumber(entry.cableMeters)}/${vmNumber(entry.metersPerReel)},0)`:undefined;
     mat.write(row,'B',r-4);mat.write(row,'C',entry.concept,labor?`'Mano de Obra'!D${sourceRow}`:undefined);
     const descriptionFormula=misc?calculation.misc.map((_,i)=>`'Misceláneos'!C${5+i}`).join('&CHAR(10)&'):undefined;
     mat.write(row,'D',entry.description,descriptionFormula);
     for(const [col,key] of [['E','brand'],['F','model'],['G','supplier']])mat.write(row,col,entry.kind==='equipment'?String(entry[key]??'').trim():'-');
-    mat.write(row,'H',entry.quantityMissing?'-':entry.quantity,labor?`'Mano de Obra'!E${sourceRow}`:undefined,true);
-    mat.write(row,'I',entry.costMissing?'-':entry.usdCost,entry.kind==='equipment'&&entry.currency==='USD'?undefined:guarded(`J${r}`,`J${r}/$J$3`));
-    mat.write(row,'J',entry.costMissing?'-':entry.mxnCost,labor?`'Mano de Obra'!F${sourceRow}`:misc?`'Misceláneos'!F${5+calculation.misc.length}`:entry.currency==='USD'?guarded(`I${r}`,`I${r}*$J$3`):undefined);
+    mat.write(row,'H',entry.quantityMissing?'-':entry.quantity,labor?`'Mano de Obra'!E${sourceRow}`:cableQuantity,true);
+    mat.write(row,'I',entry.costMissing?'-':entry.usdCost,entry.kind==='equipment'&&entry.currency==='USD'?cablePrice:guarded(`J${r}`,`J${r}/$J$3`));
+    mat.write(row,'J',entry.costMissing?'-':entry.mxnCost,labor?`'Mano de Obra'!F${sourceRow}`:misc?`'Misceláneos'!F${5+calculation.misc.length}`:entry.currency==='USD'?guarded(`I${r}`,`I${r}*$J$3`):cablePrice);
     const formulas=[labor?`'Mano de Obra'!G${sourceRow}`:product(`H${r}`,`J${r}`),guarded(`K${r}`,`K${r}*$L$3`),guarded(`K${r}`,`SUM(K${r}:L${r})`),guarded(`M${r}`,`M${r}*$N$3`),guarded(`M${r}`,`M${r}+N${r}`),guarded(`O${r}`,`O${r}*$P$3`),guarded(`O${r}`,`O${r}*$Q$3`),calculation.settings.rounding==='unit-rounded'?`IF(AND(ISNUMBER(H${r}),ISNUMBER(J${r})),H${r}*ROUND(J${r}*(1+$L$3)*(1+$N$3)*(1+$P$3+$Q$3),2),"-")`:guarded(`O${r}`,`SUM(O${r}:Q${r})`)];
     columns.forEach((col,i)=>mat.write(row,col,amount(entry,keys[i]),formulas[i]));mat.fit(row);
   }
@@ -135,13 +137,13 @@ export async function buildMatrixWorkbook(input,when=new Date(),options={}){
   if(docs.has('Mano de Obra')){
     const labor=worksheet(docs.get('Mano de Obra'),{bodyRow:5,totalRow:7,start:'C',end:'G',minimumHeight:48},catalog,measure);
     const laborItems=calculation.labor;
-    laborItems.forEach((item,i)=>{const r=5+i,row=labor.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',numberOrDash(item.quantity),undefined,true);labor.write(row,'F',numberOrDash(item.unitCost));labor.write(row,'G',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`E${r}`,`F${r}`));labor.fit(row);});
+    laborItems.forEach((item,i)=>{const r=5+i,row=labor.append(r),complete=!vmIsBlank(item.quantity)&&!vmIsBlank(item.unitCost),cable=entries.find(entry=>entry.id===item.cableEquipment);labor.write(row,'C',i+1);labor.write(row,'D',item.concept);labor.write(row,'E',numberOrDash(item.quantity),cable?.cableMode==='meter'?`'Matriz'!H${cable.row}`:undefined,true);labor.write(row,'F',numberOrDash(item.unitCost));labor.write(row,'G',complete?vmNumber(item.quantity)*vmNumber(item.unitCost):'-',product(`E${r}`,`F${r}`));labor.fit(row);});
     const laborEnd=5+laborItems.length,laborTotal=labor.append(laborEnd,labor.total);labor.write(laborTotal,'C','Total de mano de obra');labor.write(laborTotal,'G',calculation.laborDirect,`SUM(G5:G${laborEnd-1})`);outputs.set('Mano de Obra',labor.finish(laborEnd,['C2:G2',`C${laborEnd}:F${laborEnd}`]));
   }
 
   if(docs.has('Volumetria')){
     const volume=worksheet(docs.get('Volumetria'),{bodyRow:5,totalRow:6,start:'B',end:'G'},catalog,measure);
-    calculation.volumes.forEach((item,i)=>{const r=5+i,row=volume.append(r),source=`'Matriz'!J${item.sourceRow}`;volume.write(row,'B',item.concept);volume.write(row,'C',item.description);volume.write(row,'D',item.quantityMissing?'-':item.quantity,undefined,true);volume.write(row,'E',String(item.unit??'').trim());volume.write(row,'F',item.costMissing?'-':item.unitCost,item.sourceRow&&!vmIsBlank(item.unitsPerPack)?guarded(source,`${source}/${vmNumber(item.unitsPerPack)}`):undefined);volume.write(row,'G',amount(item,'direct'),product(`D${r}`,`F${r}`));volume.fit(row);});
+    calculation.volumes.forEach((item,i)=>{const r=5+i,row=volume.append(r),source=`'Matriz'!J${item.sourceRow}`;volume.write(row,'B',item.concept);volume.write(row,'C',item.description);volume.write(row,'D',item.quantityMissing?'-':item.quantity,undefined,true);volume.write(row,'E',String(item.unit??'').trim());volume.write(row,'F',item.costMissing?'-':item.unitCost,item.sourceRow&&!vmIsBlank(item.unitsPerPack)?guarded(source,`${source}${item.sourceMultiplier!==1?'*'+item.sourceMultiplier:''}/${vmNumber(item.unitsPerPack)}`):undefined);volume.write(row,'G',amount(item,'direct'),product(`D${r}`,`F${r}`));volume.fit(row);});
     const end=5+calculation.volumes.length,total=volume.append(end,volume.total);volume.write(total,'B','Total de volumetría');volume.write(total,'G',calculation.volumeDirect,`SUM(G5:G${end-1})`);outputs.set('Volumetria',volume.finish(end,['B2:G2',`B${end}:F${end}`]));
   }
   if(docs.has('Misceláneos')){

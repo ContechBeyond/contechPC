@@ -1,4 +1,4 @@
-import {VM_MAX_ITEMS,validateMatrix,calculateMatrix,vmNumber,matrixBookName,vmSectionItems} from './vm-core.js';
+import {VM_MAX_ITEMS,validateMatrix,calculateMatrix,vmNumber,matrixBookName,vmSectionItems,cableAmounts,suggestCableCapacity} from './vm-core.js';
 import {buildMatrixWorkbook} from './vm-xlsx.js';
 import {createBlankMatrixState,readMatrixDraft,writeMatrixDraft,removeMatrixDraft} from './vm-draft.js';
 import {money} from './core.js';
@@ -103,12 +103,35 @@ export function initMatrixBuilder(){
     control.value=item[key]??'';
     control.addEventListener(options?'change':'input',()=>{item[key]=control.value;invalidate();if(section==='equipment'){if(key==='unitCost')manualPrice(item);refreshVolumeChoices();}update();});wrapper.append(control);return wrapper;
   }
+  function removeCableLabor(equipmentId){
+    for(const item of [...state.labor.items])if(item.cableEquipment===equipmentId){state.labor.items.splice(state.labor.items.indexOf(item),1);rowNodes.get(item.id)?.block.remove();rowNodes.delete(item.id);}
+    relabel('labor');
+  }
+  function cableControls(item){
+    const wrap=element('div','vm-cable'),toggleLabel=element('label','vm-cable-toggle'),toggle=element('input');toggle.type='checkbox';toggle.dataset.key='cableEnabled';toggle.checked=Boolean(item.cableEnabled);toggleLabel.append(toggle,element('span','','Es cableado'));wrap.append(toggleLabel);
+    const panel=element('div','vm-cable-panel'),grid=element('div','vm-item-grid');
+    grid.append(field('equipment',item,'metersPerReel','Metros por bobina',{numeric:true,max:30}),field('equipment',item,'cableMeters','Metros a instalar',{numeric:true,max:30}),field('equipment',item,'cableMode','Forma de cobro',{wide:true,options:[['meter','Por metro'],['reel','Bobina completa']]}));
+    const reels=field('equipment',item,'cableReels','Bobinas a cobrar',{wide:true,numeric:true,max:30});reels.append(element('small','','Vacío: calcular automáticamente. Puedes ajustar la cantidad.'));grid.append(reels);
+    const summary=element('p','vm-cable-summary');summary.setAttribute('aria-live','polite');
+    const installation=element('div','vm-cable-installation'),button=element('button','button button-secondary','Agregar instalación de cableado');button.type='button';
+    const rateLabel=element('label','field'),rate=element('input');rate.type='text';rate.inputMode='decimal';rate.maxLength=30;rate.dataset.key='cableInstallationRate';rateLabel.append(element('span','','Costo de instalación MXN/m'),rate);
+    const help=element('small','','Costo inicial: $25 MXN/m, editable. Los metros se mantienen vinculados en Mano de obra.');
+    rate.addEventListener('input',()=>{const labor=state.labor.items.find(row=>row.cableEquipment===item.id);if(labor){labor.unitCost=rate.value;rowNodes.get(labor.id).cost.value=rate.value;invalidate();update();}});
+    button.addEventListener('click',()=>{
+      const existing=state.labor.items.find(row=>row.cableEquipment===item.id);
+      if(existing){selectTab('labor');rowNodes.get(existing.id).cost.focus();return;}
+      addRow('labor',false,{concept:('Instalación de cableado: '+(item.concept.trim()||'Cable')).slice(0,180),description:'Tendido, fijación y conexión de cableado, por metro.',quantity:item.cableMeters||'',unitCost:'25',currency:'MXN',cableEquipment:item.id});
+    });
+    installation.append(button,rateLabel,help);panel.append(grid,summary,installation,element('small','help','Al desmarcar cableado o eliminar este material, también se retira su instalación vinculada.'));wrap.append(panel);
+    toggle.addEventListener('change',()=>{item.cableEnabled=toggle.checked;if(item.cableEnabled){item.cableMode||='meter';item.metersPerReel||=suggestCableCapacity(item.description);item.cableMeters??='';item.cableReels??='';grid.querySelector('[data-key="cableMode"]').value=item.cableMode;grid.querySelector('[data-key="metersPerReel"]').value=item.metersPerReel;}else removeCableLabor(item.id);invalidate();update();});
+    return {wrap,panel,reels,summary,button,rate,rateLabel};
+  }
   function renderRow(section,item,index){
     const equipment=section==='equipment',block=element('fieldset','vm-item'+(equipment?' vm-equipment-item':'')),legend=element('legend',equipment?'sr-only':'',names[section]+' '+(index+1));block.dataset.item=item.id;block.append(legend);
     let details,title,content=block;
     if(equipment){details=element('details','vm-equipment-details');details.open=true;content=element('div','vm-equipment-body');block.append(details);}
     const bar=element('div','vm-item-toolbar'),total=element('output','vm-item-total','Costo directo: —'),remove=element('button','icon-button');remove.type='button';remove.setAttribute('aria-label',`Eliminar ${names[section].toLowerCase()} ${index+1}`);remove.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/></svg>';
-    remove.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();clearAddAttention(item);rows(section).splice(rows(section).indexOf(item),1);rowNodes.delete(item.id);block.remove();relabel(section);refreshVolumeChoices();invalidate();update();const next=$('vm-'+section+'-list').querySelector('summary,input,textarea,select');(next||$('vm-add-'+section)).focus();});
+    remove.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();clearAddAttention(item);if(equipment)removeCableLabor(item.id);rows(section).splice(rows(section).indexOf(item),1);rowNodes.delete(item.id);block.remove();relabel(section);refreshVolumeChoices();invalidate();update();const next=$('vm-'+section+'-list').querySelector('summary,input,textarea,select');(next||$('vm-add-'+section)).focus();});
     if(equipment){const summary=element('summary','vm-equipment-summary'),heading=element('span','vm-equipment-heading'),chevron=element('span','vm-equipment-chevron');title=element('span','vm-equipment-title');heading.append(title,total);chevron.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';summary.append(heading,remove,chevron);details.append(summary,content);}
     else{bar.append(total,remove);block.append(bar);}
     let lookupButton,lookupCancel,lookupMessage,lookupChoices,manualPriceButton;
@@ -134,21 +157,23 @@ export function initMatrixBuilder(){
       const sourceField=field(section,item,'sourceEquipment','Precio del material',{wide:true,required:false,options:[['','Capturar precio manual']]}),unitsField=field(section,item,'unitsPerPack','Unidades por presentación del equipo',{wide:true,numeric:true,max:30});
       source=sourceField.querySelector('select');units=unitsField;unitsField.append(element('small','','Ej. 152 metros por bobina. El precio se toma del equipo y se divide entre estas unidades.'));grid.append(sourceField,unitsField);
     }
-    content.append(grid);$('vm-'+section+'-list').append(block);rowNodes.set(item.id,{block,legend,details,title,remove,total,source,units,cost:grid.querySelector('[data-key="unitCost"]'),lookupButton,lookupCancel,lookupMessage,lookupChoices,manualPrice:manualPriceButton,pricePending:false});
+    content.append(grid);const cable=equipment?cableControls(item):null;if(cable)content.append(cable.wrap);
+    if(section==='labor'&&item.cableEquipment)content.append(element('small','help','Instalación vinculada al cable: modifica los metros en Equipos y materiales. El costo por metro es editable.'));
+    $('vm-'+section+'-list').append(block);rowNodes.set(item.id,{block,legend,details,title,remove,total,source,units,cable,cost:grid.querySelector('[data-key="unitCost"]'),lookupButton,lookupCancel,lookupMessage,lookupChoices,manualPrice:manualPriceButton,pricePending:false});
     if(equipment)details.addEventListener('toggle',saveDraft);
     refreshVolumeChoices();return block;
   }
   function relabel(section){const items=rows(section);items.forEach((item,i)=>{const node=rowNodes.get(item.id);if(section!=='equipment'){node.legend.textContent=names[section]+' '+(i+1);node.remove.setAttribute('aria-label',`Eliminar ${names[section].toLowerCase()} ${i+1}`);}});
     const list=$('vm-'+section+'-list');list.querySelector('.vm-empty-list')?.remove();if(!items.length)list.append(element('p','vm-empty-list','Agrega una partida para incluirla en la matriz.'));
   }
-  function addRow(section,focus=false){
+  function addRow(section,focus=false,values={}){
     if(busy||rows(section).length>=VM_MAX_ITEMS)return;
     if(section==='equipment'){
       const pending=lookupCurrent?.item||state.equipment.find(item=>rowNodes.get(item.id).pricePending);
       if(pending){pendingPriceNotice(pending,Boolean(lookupCurrent));return;}
       const previous=state.equipment.at(-1);if(previous)rowNodes.get(previous.id).details.open=false;
     }
-    const item={id:section+'-'+(++nextId),concept:'',description:'',quantity:section==='equipment'?'1':'',unitCost:'',model:'',brand:'',supplier:'',currency:'USD',unit:'m',sourceEquipment:'',unitsPerPack:''};rows(section).push(item);$('vm-'+section+'-list').querySelector('.vm-empty-list')?.remove();const node=renderRow(section,item,rows(section).length-1);invalidate();update();if(focus){selectTab(section);node.querySelector('input').focus();}
+    const item={id:section+'-'+(++nextId),concept:'',description:'',quantity:section==='equipment'?'1':'',unitCost:'',model:'',brand:'',supplier:'',currency:'USD',unit:'m',sourceEquipment:'',unitsPerPack:'',...values};rows(section).push(item);$('vm-'+section+'-list').querySelector('.vm-empty-list')?.remove();const node=renderRow(section,item,rows(section).length-1);invalidate();update();if(focus){selectTab(section);node.querySelector('input').focus();}
   }
   function refreshVolumeChoices(){
     for(const item of state.volume.items){const node=rowNodes.get(item.id);if(!node?.source)continue;const options=[['','Capturar precio manual'],...state.equipment.map((equipment,i)=>[equipment.id,`${i+1}. ${equipment.concept.trim()||'Equipo sin nombre'}`])];if(item.sourceEquipment&&!options.some(([id])=>id===item.sourceEquipment))options.push([item.sourceEquipment,'Equipo eliminado: elige otra opción']);node.source.replaceChildren(...options.map(([value,title])=>{const option=element('option','',title);option.value=value;return option;}));node.source.value=item.sourceEquipment;
@@ -156,11 +181,13 @@ export function initMatrixBuilder(){
   }
   function rowCost(section,item){
     let cost=vmNumber(item.unitCost);
+    let quantity=vmNumber(item.quantity);if(section==='equipment'&&item.cableEnabled){const cable=cableAmounts(item);cost=cable.unitCost;quantity=cable.quantity;}
     if(section==='equipment'&&item.currency==='USD')cost*=vmNumber(state.settings.exchangeRate);
     if(section==='volume'&&item.sourceEquipment){const equipment=state.equipment.find(row=>row.id===item.sourceEquipment);const units=vmNumber(item.unitsPerPack);cost=equipment&&units>0?vmNumber(equipment.unitCost)*(equipment.currency==='USD'?vmNumber(state.settings.exchangeRate):1)/units:NaN;}
-    return {unit:cost,total:vmNumber(item.quantity)>0&&cost>=0?vmNumber(item.quantity)*cost:NaN};
+    return {unit:cost,total:quantity>0&&cost>=0?quantity*cost:NaN};
   }
   function update(){
+    for(const labor of state.labor.items)if(labor.cableEquipment){const equipment=state.equipment.find(item=>item.id===labor.cableEquipment&&item.cableEnabled);if(equipment){labor.quantity=equipment.cableMeters||'';const input=rowNodes.get(labor.id)?.block.querySelector('[data-key="quantity"]');if(input){input.value=labor.quantity;input.readOnly=true;}}}
     const included=Object.fromEntries(Object.keys(names).map(section=>[section,vmSectionItems(section,rows(section))]));
     for(const section of ['labor','volume','miscellaneous'])state[section].enabled=Boolean(included[section].length);
     for(const section of Object.keys(names))$('vm-tab-'+section+'-count').textContent=String(included[section].length);
@@ -177,6 +204,14 @@ export function initMatrixBuilder(){
           for(const control of node.block.querySelectorAll('input,textarea,select,button'))if(control!==node.lookupButton&&control!==node.lookupCancel)control.disabled=busy||lookupCurrent?.item===item||control.dataset.includesVat==='true';
           node.lookupCancel.disabled=busy;
           node.manualPrice.hidden=!node.pricePending;
+          const cable=node.cable,enabled=Boolean(item.cableEnabled),quantity=node.block.querySelector('[data-key="quantity"]');
+          quantity.closest('label').hidden=enabled;node.cost.closest('label').querySelector('span').textContent=enabled?'Precio de compra de la bobina':'Precio de compra unitario';cable.panel.hidden=!enabled;
+          if(enabled){
+            const values=cableAmounts(item),labor=state.labor.items.find(row=>row.cableEquipment===item.id);cable.reels.hidden=values.perMeter;
+            cable.reels.querySelector('input').placeholder=Number.isFinite(values.suggested)?String(values.suggested):'Automático';
+            cable.summary.textContent=values.meters>0&&values.capacity>0?`${values.meters} m a instalar · ${values.suggested} ${values.suggested===1?'bobina necesaria':'bobinas necesarias'}. Cobro: ${values.quantity} ${values.perMeter?'m':values.quantity===1?'bobina':'bobinas'}. ${values.perMeter?'Costo por metro: '+format(cost.unit)+' MXN. ':''}Costo base: ${format(cost.total)} MXN.`:'Completa los metros por bobina y los metros a instalar para calcular el cableado.';
+            cable.button.textContent=labor?'Ver instalación en Mano de obra':'Agregar instalación de cableado';cable.button.disabled=busy||lookupCurrent?.item===item||(!labor&&state.labor.items.length>=VM_MAX_ITEMS);cable.rateLabel.hidden=!labor;if(labor)cable.rate.value=labor.unitCost;
+          }
         }
         if(section==='volume'){const linked=Boolean(item.sourceEquipment);node.units.hidden=!linked;node.cost.readOnly=linked;node.cost.value=linked&&Number.isFinite(cost.unit)?String(cost.unit):linked?'':item.unitCost;}
       }
@@ -212,6 +247,7 @@ export function initMatrixBuilder(){
     const node=rowNodes.get(item.id);if(!node)return;
     clearAddAttention(item);node.pricePending=!product.price;
     for(const key of ['model','concept','description','brand','supplier']){item[key]=String(product[key]??'');node.block.querySelector('[data-key="'+key+'"]').value=item[key];}
+    if(item.cableEnabled&&!item.metersPerReel){item.metersPerReel=suggestCableCapacity(item.description);node.block.querySelector('[data-key="metersPerReel"]').value=item.metersPerReel;}
     item.unitCost=product.price?String(product.price.unitCost):'';node.cost.value=item.unitCost;
     if(product.price){item.currency=product.price.currency;node.block.querySelector('[data-key="currency"]').value=item.currency;}
     node.lookupMessage.replaceChildren();const sourceLink=element('a','','Ver ficha en SYSCOM');sourceLink.href=product.url;sourceLink.target='_blank';sourceLink.rel='noopener noreferrer';

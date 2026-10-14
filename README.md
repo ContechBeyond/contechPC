@@ -164,6 +164,16 @@ Word mantiene el formato y las fuentes de la plantilla. El PDF usa Carlito, una 
 
 Los datos bancarios se encuentran también en la imagen del formato y en la plantilla Word: cambiarlos solo en `defaults.json` no modifica los documentos. Actualiza esos dos recursos si cambia la cuenta.
 
+## Cableado en Crear matriz
+
+En **Equipos y materiales**, marca **Es cableado** en la tarjeta del material. El precio de compra (manual o importado de SYSCOM) corresponde a la bobina; indica los metros por bobina y los metros a instalar. Una longitud explícita en la descripción, por ejemplo «Bobina de Cable de 305 Metros», se sugiere al activar esta opción.
+
+- **Por metro:** costo por metro = precio de la bobina / metros por bobina. La cantidad cobrada es la longitud a instalar.
+- **Bobina completa:** se sugieren las bobinas necesarias, redondeando hacia arriba; puedes ajustar la cantidad a cobrar. Dejarla vacía restablece el cálculo automático.
+- **Agregar instalación de cableado:** crea una sola partida vinculada en Mano de obra, con costo inicial de **25 MXN/m**, editable desde cualquiera de los dos formularios. La cantidad sigue los metros a instalar incluso cuando se cobran bobinas completas. Eliminar esa instalación permite volver a agregarla; desmarcar cableado o eliminar el material retira su instalación vinculada.
+
+Los porcentajes de venta se aplican al costo base como en las demás partidas. La compra sugerida no se suma de nuevo, la volumetría sigue siendo auxiliar y los cálculos conservan la precisión interna. Cliente describe el suministro por metro o por bobina; la exportación mantiene las fórmulas y el formato de la plantilla. El borrador local conserva la modalidad, longitudes, cantidad de bobinas y tarifa de instalación.
+
 ## Prueba local
 
 No abras `index.html` directamente con doble clic: el navegador necesita servir los recursos por HTTP.

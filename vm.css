@@ -101,6 +101,16 @@
 .vm-clear-dialog .dialog-actions{flex-wrap:wrap}
 .vm-summary .privacy-note{margin-top:18px;margin-bottom:0;display:block}
 .vm-empty-list{font-size:.8125rem;color:var(--muted)}
+.vm-cable{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.vm-cable-toggle{display:flex;align-items:center;gap:10px;font-size:.875rem;font-weight:600;cursor:pointer}
+.vm-cable-toggle input{width:18px;height:18px;accent-color:var(--red);flex:none}
+.vm-cable-panel{margin-top:18px;padding:18px;background:var(--surface-subtle);border:1px solid var(--line);border-radius:10px}
+.vm-cable-panel .vm-item-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.vm-cable-panel small{display:block;color:var(--muted);font-size:.75rem;line-height:1.6;margin-top:8px}
+.vm-cable-summary{font-size:.8125rem;line-height:1.7;color:var(--ink);overflow-wrap:anywhere;margin:18px 0}
+.vm-cable-installation{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:16px}
+.vm-cable-installation .field{margin:0}.vm-cable-installation .button{white-space:normal}
+@media(max-width:560px){.vm-cable-panel{padding:14px 10px}.vm-cable-panel .vm-item-grid{grid-template-columns:1fr}}
 @container(max-width:880px){.vm-workbench{grid-template-columns:1fr}.vm-summary{position:static}}
 @media(max-width:560px){
   .vm-workbench{grid-template-columns:1fr;gap:20px}

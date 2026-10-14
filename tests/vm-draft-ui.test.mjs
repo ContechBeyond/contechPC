@@ -24,6 +24,7 @@ test('cableado guarda modos y tarifa editable, sincroniza metros y elimina solo 
   card.querySelector('.vm-cable-installation button').click();assert.equal(ui.cards('labor').length,1);assert.equal(ui.$('vm-tab-labor').getAttribute('aria-selected'),'true');
   ui.fill(ui.cards('labor')[0],'unitCost','30.123456789');assert.equal(card.querySelector('[data-key="cableInstallationRate"]').value,'30.123456789');
   ui.$('vm-tab-equipment').click();ui.fill(card,'cableMode','reel');ui.fill(card,'cableReels','2');
+  assert.equal(card.querySelector('.vm-item-total').textContent,'Costo directo: $6,100.00');
   const stored=ui.snapshot();ui.close();ui=await fixture(t,{stored});card=ui.cards()[0];
   assert.equal(card.querySelector('[data-key="cableEnabled"]').checked,true);
   assert.equal(card.querySelector('[data-key="cableReels"]').value,'2');assert.equal(card.querySelector('[data-key="cableInstallationRate"]').value,'30.123456789');

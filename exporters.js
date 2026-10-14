@@ -1,4 +1,5 @@
 import {money,decimalString,longDate,coverDate,conditionLines,fileName} from './core.js';
+import {proposalCoverContent} from './proposal-cover.js';
 const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const ASSET_CACHE=new Map();
 async function asset(path,kind='buffer') {
@@ -77,7 +78,7 @@ export async function buildWordBlob(data) {
   const grid=child(table,'tblGrid');children(grid,'gridCol').forEach((col,i)=>setAttr(col,'w',widths[i]));
   for(const row of rows.slice(1,-1))table.removeChild(row);
   data.rows.forEach((row,index)=>{
-    const clone=pattern.cloneNode(true);const values=[String(index+1),row.concept,row.description,decimalString(row.quantity,'quantity').replace('.',','),money(row.unitCents),money(row.amountCents)];
+    const clone=pattern.cloneNode(true);const values=[String(index+1),row.concept,row.description,decimalString(row.quantity,'quantity'),money(row.unitCents),money(row.amountCents)];
     children(clone,'tc').forEach((cell,i)=>{setCell(cell,values[i]);setAttr(ensureChild(ensureChild(cell,'tcPr'),'tcW'),'w',widths[i]);});
     table.insertBefore(clone,total);
   });
@@ -110,11 +111,14 @@ function lineCount(text,width,bold=false,size=11) {
 }
 export async function buildPdfBlob(data) {
   const assets=await preparePdf();
+  const coverContext=document.createElement('canvas').getContext('2d');
+  coverContext.fontKerning='none';
+  const coverContent=proposalCoverContent(data,coverDate(data.issueDate),(text,size)=>{coverContext.font=`700 ${size}px Carlito`;return coverContext.measureText(text).width;});
   const widths=[12,78,177.4,41.5,50.5,55],fontSize=11,lineHeight=14.41;
   const header=['#','Concepto','Descripción','Cantidad','P. Unitario','Total'].map(text=>({text,bold:true,color:'#ffffff',fillColor:'#434343',alignment:'center',margin:[0,1,0,1]}));
   const body=[header];
   for(let index=0;index<data.rows.length;index++){
-    const row=data.rows[index];const values=[String(index+1),row.concept,row.description,decimalString(row.quantity,'quantity').replace('.',','),money(row.unitCents),money(row.amountCents)];
+    const row=data.rows[index];const values=[String(index+1),row.concept,row.description,decimalString(row.quantity,'quantity'),money(row.unitCents),money(row.amountCents)];
     const lines=values.map((value,i)=>lineCount(value,widths[i]));const max=Math.max(2,...lines);
     if(max*lineHeight>580)throw new Error(`El concepto ${index+1} ocupa más de una página. Divide o acorta su descripción para generar el PDF con la fila completa.`);
     body.push(values.map((text,i)=>({text,fillColor:'#D9EAD3',alignment:i>=4?'right':'center',margin:[0,Math.max(0,(max-lines[i])*lineHeight/2),0,Math.max(0,(max-lines[i])*lineHeight/2)]})));
@@ -129,10 +133,7 @@ export async function buildPdfBlob(data) {
     background:page=>({image:page===1?'cover':'letterhead',width:612,height:792,absolutePosition:{x:0,y:0}}),
     footer:(page,count)=>({text:[{text:'Página '},{text:String(page),bold:true},{text:' de '},{text:String(count),bold:true}],fontSize:10,alignment:'right',margin:[85.05,7.5,85.05,0]}),
     content:[
-      {text:'PROPUESTA COMERCIAL',bold:true,color:'white',fontSize:20,absolutePosition:{x:129.1,y:327.4}},
-      {columns:[{width:196,stack:[{text:data.project},{text:data.client}]}],fontSize:20,bold:true,color:'white',lineHeight:1.08,alignment:'center',absolutePosition:{x:122,y:367.2}},
-      {text:coverDate(data.issueDate),fontSize:12,bold:true,color:'white',absolutePosition:{x:183.8,y:452.8}},
-      {columns:[{width:468,text:'Folio:  '+data.folio}],fontSize:10,bold:true,color:'white',alignment:'center',absolutePosition:{x:72,y:541}},
+      ...coverContent,
       {text:'PROPUESTA COMERCIAL',fontSize:14,bold:true,lineHeight:1,pageBreak:'before',margin:[0,0,0,11]},
       {text:data.recipient||'Estimado cliente',fontSize:12,bold:true,lineHeight:1.08,margin:[0,0,0,10]},
       {text:assets.defaults.intro[0],fontSize:12,lineHeight:1.08,alignment:'justify',margin:[0,0,0,8]},

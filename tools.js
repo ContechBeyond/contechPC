@@ -1,7 +1,7 @@
 // Register tools here. The portal builds its menu, cards and routes from this list.
 // Existing document tools share one initializer; module imports run it only once.
 // A new URL keeps the pre-portal bootstrap out of existing browser caches.
-const loadDocumentTools=()=>import('./app.js?portal=2');
+const loadDocumentTools=()=>import('./app.js?portal=4');
 
 export const TOOLS=[
   {
@@ -10,7 +10,7 @@ export const TOOLS=[
     description:'Captura equipos y costos del proyecto para generar una matriz de Excel con fórmulas y formato Contech.',
     badge:'VM',formats:['Excel'],
     icon:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 13h8M12 9v8"/>',
-    load:()=>import('./vm-ui.js?vm=7').then(module=>module.initMatrixBuilder())
+    load:()=>import('./vm-ui.js?vm=8').then(module=>module.initMatrixBuilder())
   },
   {
     id:'proposal',slug:'propuesta-comercial',viewId:'proposal-view',headingId:'proposal-title',

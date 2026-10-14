@@ -31,15 +31,16 @@ function roundToCents(coefficient,scale) {
 }
 export function cents(value) {const p=decimalParts(value,'money');return p?roundToCents(p.coefficient,p.scale):NaN;}
 export function multipliedCents(quantity,price) {const q=decimalParts(quantity,'quantity'),p=decimalParts(price,'money');return q&&p?roundToCents(q.coefficient*p.coefficient,q.scale+p.scale):NaN;}
-export const money = amount => '$'+new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}).format((Number.isFinite(amount)?amount:0)/100);
-export const editableMoney = amount => ((Number.isFinite(amount)?amount:0)/100).toFixed(2).replace('.',',');
+const amountFormatter=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+export const editableMoney = amount => amountFormatter.format((Number.isFinite(amount)?amount:0)/100);
+export const money = amount => '$'+editableMoney(amount);
 export function validateRows(rows,declaredTotal=null,acceptedDifferences=new Map()) {
   const issues=[],accepted=[];let total=0;let calculatedTotal=0;
   rows.forEach((row,i)=>{
     const q=Number(decimalString(row.quantity,'quantity')),p=Number(decimalString(row.unitPrice)),a=cents(row.amount),expected=multipliedCents(row.quantity,row.unitPrice);
     if(!row.concept.trim())issues.push({row:i+1,id:row.id,type:'concept',message:`Concepto ${i+1}: falta el nombre.`});
     if(row.concept.length>180)issues.push({row:i+1,id:row.id,type:'concept',message:`Concepto ${i+1}: acorta el nombre a un máximo de 180 caracteres.`});
-    if(!decimalString(row.quantity,'quantity')||q<=0||q>1000000)issues.push({row:i+1,id:row.id,type:'quantity',message:`Concepto ${i+1}: indica una cantidad mayor que cero y de hasta 1.000.000.`});
+    if(!decimalString(row.quantity,'quantity')||q<=0||q>1000000)issues.push({row:i+1,id:row.id,type:'quantity',message:`Concepto ${i+1}: indica una cantidad mayor que cero y de hasta 1,000,000.`});
     if(!decimalString(row.unitPrice)||p<0||p>1000000000)issues.push({row:i+1,id:row.id,type:'price',message:`Concepto ${i+1}: revisa el precio unitario.`});
     if((decimalString(row.unitPrice).split('.')[1]||'').length>2)issues.push({row:i+1,id:row.id,type:'price',message:`Concepto ${i+1}: el precio unitario debe tener como máximo dos decimales.`});
     if(!Number.isSafeInteger(a)||a<0)issues.push({row:i+1,id:row.id,type:'amount',message:`Concepto ${i+1}: revisa el importe.`});
@@ -48,7 +49,7 @@ export function validateRows(rows,declaredTotal=null,acceptedDifferences=new Map
       const difference={row:i+1,id:row.id,type:'mismatch',signature,message:`Concepto ${i+1}: cantidad × precio = ${money(expected)}; el importe indica ${money(a)}.`};
       (acceptedDifferences.get(row.id)===signature?accepted:issues).push(difference);
     }
-    if(row.description.length>2400)issues.push({row:i+1,id:row.id,type:'description',message:`Concepto ${i+1}: acorta la descripción a un máximo de 2.400 caracteres para conservar la fila completa.`});
+    if(row.description.length>2400)issues.push({row:i+1,id:row.id,type:'description',message:`Concepto ${i+1}: acorta la descripción a un máximo de 2,400 caracteres para conservar la fila completa.`});
     if(Number.isFinite(a))total+=a;
     if(Number.isFinite(expected))calculatedTotal+=expected;
   });

@@ -31,12 +31,12 @@ async function stylesFor(result){
   });
 }
 function fontString(style){return `${style.italic?'italic ':''}${style.bold?'bold ':''}${style.size}px "${style.font.replace(/["\\]/g,'')}", "Carlito", Arial, sans-serif`;}
-function printedText(cell){
+export function printedText(cell){
   if(!cell||cell.v===undefined)return '';
-  const text=XLSX.utils.format_cell(cell);
-  // Match the supplied Contech print reference; never change numeric cell values.
-  if(cell.t==='n'&&!XLSX.SSF.is_date(cell.z||'General'))return text.replace(/\d[\d,.]*/g,v=>v.replace(/[.,]/g,c=>c==='.'?',':'.'));
-  return text;
+  // OOXML format codes use comma grouping and decimal points. Reformat the
+  // numeric value rather than trusting a cached, possibly localized `w` string.
+  if(cell.t==='n')return XLSX.SSF.format(cell.z||'General',cell.v);
+  return XLSX.utils.format_cell({...cell});
 }
 function linesFor(ctx,text,width){
   const lines=[];

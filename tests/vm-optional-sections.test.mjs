@@ -90,6 +90,8 @@ test('el Excel incluye solo hojas con datos y mantiene referencias, precisión, 
     let vf=await convertMatrix(book.bytes,result.name);near(vf.workbook.Sheets.Matriz.R10.v,result.calculation.totals.total);
     cable.cableMode='reel';cable.cableMeters='400';result=await buildMatrixWorkbook(data,when,options);book=await inspectWorkbook(result);
     assert.equal(book.formula('Matriz','H5'),'ROUNDUP(400/305,0)');near(book.value('Cliente','E5'),2);
+    const displayed=XLSX.read(book.bytes,{type:'array',cellNF:true});
+    assert.equal(XLSX.SSF.format(displayed.Sheets.Matriz.J5.z,displayed.Sheets.Matriz.J5.v),'$3,050.12');
     near(book.value('Mano de Obra','E5'),400);assert.equal(book.formula('Mano de Obra','E5'),undefined);
     near(result.calculation.totals.direct,2*3050.123456789+400*25);
     vf=await convertMatrix(book.bytes,result.name);near(vf.workbook.Sheets.Matriz.R10.v,result.calculation.totals.total);

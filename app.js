@@ -1,7 +1,7 @@
 import {COLUMN_FIELDS,headerColumns,identifyHeaders,rankSheets,normalize,importMatrix,validateRows,money,cents,multipliedCents,editableMoney,todayMexico,lastDayOfMonth,coverDate,sheetReference,suggestedFolio} from './core.js';
-import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js';
+import {getDefaults,buildWordBlob,buildPdfBlob,downloadBlob,downloadName} from './exporters.js?format=3';
 import {openPdfPreview,clearPreview} from './preview.js';
-import {initFinalVersion} from './vf-ui.js?portal=2';
+import {initFinalVersion} from './vf-ui.js?portal=3';
 import {exportTitle} from './vf-core.js';
 const $=id=>document.getElementById(id);
 const ICONS={upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',sheet:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h8M11 11v7"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8a7 7 0 0 1 11.8-3L20 8M4 16l2.6 3A7 7 0 0 0 18.4 16"/>',check:'<path d="m5 12 4 4L19 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',file:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/>',shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Zm-4 9 3 3 5-6"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/>'};
@@ -43,7 +43,7 @@ function renderRows(){
 }
 $('rows').addEventListener('input',event=>{const field=event.target.dataset.field;if(!field)return;const row=state.rows.find(r=>r.id===event.target.closest('tr').dataset.id);row[field]=event.target.value;if(['quantity','unitPrice','amount'].includes(field)){state.declaredTotal=null;state.acceptedDifferences.delete(row.id);}update();});
 $('rows').addEventListener('click',event=>{const button=event.target.closest('.remove-row');if(!button)return;const id=button.closest('tr').dataset.id;state.rows=state.rows.filter(row=>row.id!==id);state.acceptedDifferences.delete(id);state.declaredTotal=null;renderRows();});
-function addRow(){if(state.rows.length>=200){notice('La propuesta admite hasta 200 conceptos.',true);return;}state.rows.push({id:crypto.randomUUID(),concept:'',description:'',quantity:'1',unitPrice:'0,00',amount:'0,00'});state.declaredTotal=null;renderRows();$('rows').lastElementChild.querySelector('input').focus();}
+function addRow(){if(state.rows.length>=200){notice('La propuesta admite hasta 200 conceptos.',true);return;}state.rows.push({id:crypto.randomUUID(),concept:'',description:'',quantity:'1',unitPrice:'0.00',amount:'0.00'});state.declaredTotal=null;renderRows();$('rows').lastElementChild.querySelector('input').focus();}
 $('manual-start').addEventListener('click',addRow);$('add-row').addEventListener('click',addRow);
 for(const id of ['project','client','folio','recipient','issue-date','expiry-date','technical','commercial'])$(id).addEventListener('input',()=>{notice('');update();});
 function sourceLabel(name){state.source=name;$('source-name').textContent=name;$('source-info').hidden=false;}

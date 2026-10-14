@@ -83,7 +83,7 @@ export function validateMatrix(data){
             if(Number.isFinite(vmNumber(item.cableReels))&&!Number.isInteger(vmNumber(item.cableReels)))add(prefix+'.cableReels',`${labelRow}: indica un número entero de bobinas.`);
           }
           const cable=cableAmounts(item);
-          if(Number.isFinite(cable.quantity)&&cable.quantity>1000000)add(prefix+'.cableReels',`${labelRow}: la cantidad de cobro supera 1.000.000.`);
+          if(Number.isFinite(cable.quantity)&&cable.quantity>1000000)add(prefix+'.cableReels',`${labelRow}: la cantidad de cobro supera 1,000,000.`);
         }
       }
       if(name==='labor'&&item.cableEquipment){
@@ -99,7 +99,7 @@ export function validateMatrix(data){
       }else optional(item.unitCost,prefix+'.unitCost',`${labelRow}, precio unitario`);
     });
   }
-  if(misc.map(miscellaneousText).join('\n').length>2400)add('miscellaneous','El descriptivo conjunto de misceláneos supera 2.400 caracteres. Acórtalo para conservarlo completo en Cliente y la propuesta.');
+  if(misc.map(miscellaneousText).join('\n').length>2400)add('miscellaneous','El descriptivo conjunto de misceláneos supera 2,400 caracteres. Acórtalo para conservarlo completo en Cliente y la propuesta.');
   return {valid:issues.length===0,issues};
 }
 
